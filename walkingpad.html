@@ -1,0 +1,349 @@
+<title>Mi Walking Pad</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: consola de caminadora en una sola columna; métricas arriba, control de velocidad al centro, start/stop abajo */
+:root{
+  --bg:#0d1016; --panel:#151a23; --panel-2:#1c2330; --line:#262f3e;
+  --fg:#eef1f6; --muted:#8a94a6; --accent:#ff5a3c; --accent-ink:#1a0a05;
+  --go:#3ddc97; --go-ink:#04140d; --warn:#ffb547;
+  --display:"Saira Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 28px;
+  -webkit-tap-highlight-color:transparent}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.04em;text-transform:uppercase}
+.status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding:6px 10px;border-radius:999px;background:var(--panel)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.status[data-s="on"] .dot{background:var(--go);box-shadow:0 0 8px var(--go)}
+.status[data-s="demo"] .dot{background:var(--warn)}
+.status[data-s="busy"] .dot{background:var(--warn);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.3}}
+.connect{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:11px 16px;border-radius:12px;background:var(--panel-2);font-weight:600;font-size:14px}
+.btn.primary{background:var(--fg);color:var(--bg)}
+.btn:disabled{opacity:.4;cursor:default}
+.note{font-size:13px;line-height:1.5;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.note b{color:var(--fg)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-radius:16px;overflow:hidden}
+.stat{background:var(--panel);padding:12px 6px 10px;text-align:center;min-width:0}
+.stat .v{font-family:var(--display);font-weight:600;font-size:clamp(22px,7vw,30px);line-height:1;font-variant-numeric:tabular-nums}
+.stat .l{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.goal{display:flex;align-items:center;gap:14px;background:var(--panel);border-radius:16px;padding:12px 14px}
+.goal svg{flex:none}
+.goal .t{font-size:13px;color:var(--muted)}
+.goal .n{font-family:var(--display);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.speed{background:var(--panel);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.speed h2{margin:0;text-align:center;font-weight:500;font-size:16px}
+.speed h2 span{color:var(--muted)}
+.dial{display:grid;grid-template-columns:1fr 1.3fr 1fr;border-radius:16px;overflow:hidden;background:var(--panel-2)}
+.dial button{font-size:40px;font-weight:300;padding:14px 0}
+.dial button:active{background:var(--line)}
+.val{background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0}
+.val .big{font-family:var(--display);font-weight:700;font-size:64px;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.val .real{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-radius:12px;overflow:hidden}
+.presets button{background:var(--bg);padding:14px 0;font-family:var(--display);font-size:24px;color:var(--muted)}
+.presets button[aria-pressed="true"]{color:var(--fg);background:var(--panel-2)}
+.actions{display:flex;justify-content:center;gap:40px;padding-top:4px}
+.act{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px}
+.act .c{width:76px;height:76px;border-radius:50%;display:grid;place-items:center}
+.act.start .c{background:var(--go);color:var(--go-ink)}
+.act.stop .c{background:var(--accent);color:var(--accent-ink)}
+.act.set .c{background:var(--panel-2)}
+.act:disabled{opacity:.35;cursor:default}
+dialog{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:18px;padding:18px;width:min(420px,calc(100vw - 32px))}
+dialog::backdrop{background:rgb(0 0 0 / .6)}
+dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spacing:.03em;text-transform:uppercase}
+.field{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.field input,.field select{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;width:110px;font:inherit}
+.log{font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--muted);max-height:90px;overflow:auto;margin-top:12px;white-space:pre-wrap;word-break:break-all}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand">Mi Walking Pad</div>
+    <div class="status" id="status" data-s="off"><span class="dot"></span><span id="statusTxt">Sin conectar</span></div>
+  </div>
+
+  <div class="connect">
+    <button class="btn primary" id="btnConnect">Conectar caminadora</button>
+    <button class="btn" id="btnDemo">Modo demo</button>
+    <button class="btn" id="btnDisconnect" hidden>Desconectar</button>
+  </div>
+  <div class="note" id="btNote" hidden></div>
+
+  <div class="stats">
+    <div class="stat"><div class="v" id="sTime">00:00</div><div class="l">Tiempo</div></div>
+    <div class="stat"><div class="v" id="sDist">0.00</div><div class="l" id="sDistU">mi</div></div>
+    <div class="stat"><div class="v" id="sSteps">0</div><div class="l">Pasos</div></div>
+    <div class="stat"><div class="v" id="sKcal">0</div><div class="l">kcal</div></div>
+  </div>
+
+  <div class="goal">
+    <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+      <circle cx="28" cy="28" r="23" fill="none" stroke="var(--line)" stroke-width="6"/>
+      <circle id="ring" cx="28" cy="28" r="23" fill="none" stroke="var(--go)" stroke-width="6" stroke-linecap="round"
+        stroke-dasharray="144.5" stroke-dashoffset="144.5" transform="rotate(-90 28 28)"/>
+    </svg>
+    <div><div class="t">Meta de la sesión</div><div class="n"><span id="gSteps">0</span> / <span id="gGoal">10000</span> pasos</div></div>
+  </div>
+
+  <div class="speed">
+    <h2>Velocidad <span id="uLbl">(mph)</span></h2>
+    <div class="dial">
+      <button id="minus" aria-label="Bajar velocidad">−</button>
+      <div class="val"><div class="big" id="target">1.9</div><div class="real" id="real">real 0.0</div></div>
+      <button id="plus" aria-label="Subir velocidad">+</button>
+    </div>
+    <div class="presets" id="presets"></div>
+  </div>
+
+  <div class="actions">
+    <button class="act start" id="btnStart"><span class="c"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></span>Iniciar</button>
+    <button class="act stop" id="btnStop"><span class="c"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg></span>Detener</button>
+    <button class="act set" id="btnSet"><span class="c"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></span>Ajustes</button>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <h3>Ajustes</h3>
+  <div class="field"><label for="optUnit">Unidad</label><select id="optUnit"><option value="mph">mph / millas</option><option value="kmh">km/h / km</option></select></div>
+  <div class="field"><label for="optGoal">Meta de pasos</label><input id="optGoal" type="number" min="500" step="500"></div>
+  <div class="field"><label for="optWeight">Tu peso (kg)</label><input id="optWeight" type="number" min="35" max="200"></div>
+  <div class="field"><label for="optMax">Velocidad máx. (km/h)</label><input id="optMax" type="number" min="3" max="20" step="0.5"></div>
+  <div class="field"><label for="optStride">Zancada (m)</label><input id="optStride" type="number" min="0.4" max="1.2" step="0.01"></div>
+  <div class="field"><span>Protocolo</span><span id="proto" style="color:var(--muted)">—</span></div>
+  <div class="log" id="log"></div>
+  <div class="row"><button class="btn" id="btnReset">Reiniciar sesión</button><button class="btn primary" id="btnClose">Listo</button></div>
+</dialog>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const KMH_PER_MPH = 1.609344;
+
+/* ---------- ajustes (localStorage, tolerante a fallos) ---------- */
+const defaults = {unit:'mph', goal:10000, weight:75, maxKmh:6, stride:0.65};
+let cfg = {...defaults};
+try { Object.assign(cfg, JSON.parse(localStorage.getItem('wp-cfg') || '{}')); } catch(e){}
+const saveCfg = () => { try { localStorage.setItem('wp-cfg', JSON.stringify(cfg)); } catch(e){} };
+
+/* ---------- estado ---------- */
+const st = {
+  mode:'none',            // none | ftms | ks | demo
+  running:false,
+  targetKmh:3.0,          // ~1.9 mph
+  actualKmh:0,
+  elapsed:0, distM:0, steps:0, kcal:0,
+  dev:{time:null, dist:null, steps:null, kcal:null}, // valores reportados por la máquina
+  minKmh:0.5
+};
+
+/* ---------- log ---------- */
+const log = m => { const el=$('log'); el.textContent = (new Date().toLocaleTimeString()+'  '+m+'\n'+el.textContent).slice(0,4000); };
+
+/* ---------- UI ---------- */
+const toUnit = kmh => cfg.unit==='mph' ? kmh/KMH_PER_MPH : kmh;
+const fromUnit = v => cfg.unit==='mph' ? v*KMH_PER_MPH : v;
+function fmtTime(s){ s=Math.floor(s); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60;
+  return h ? `${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`; }
+
+function setStatus(s, txt){ $('status').dataset.s=s; $('statusTxt').textContent=txt; }
+
+function renderPresets(){
+  const vals = cfg.unit==='mph' ? [1,2,3,4] : [2,3,4,5];
+  const p=$('presets'); p.innerHTML='';
+  vals.forEach(v => { const b=document.createElement('button'); b.textContent=v; b.dataset.v=v;
+    b.setAttribute('aria-pressed', Math.abs(toUnit(st.targetKmh)-v)<0.05);
+    b.onclick=()=>setTarget(fromUnit(v)); p.appendChild(b); });
+}
+
+function render(){
+  const dist = st.dev.dist ?? st.distM;
+  const steps = Math.round(st.dev.steps ?? st.steps);
+  $('sTime').textContent = fmtTime(st.dev.time ?? st.elapsed);
+  $('sDist').textContent = (cfg.unit==='mph' ? dist/1609.344 : dist/1000).toFixed(2);
+  $('sDistU').textContent = cfg.unit==='mph' ? 'mi' : 'km';
+  $('sSteps').textContent = steps.toLocaleString('es-CO');
+  $('sKcal').textContent = Math.round(st.dev.kcal ?? st.kcal);
+  $('uLbl').textContent = cfg.unit==='mph' ? '(mph)' : '(km/h)';
+  $('target').textContent = toUnit(st.targetKmh).toFixed(1);
+  $('real').textContent = 'real ' + toUnit(st.actualKmh).toFixed(1);
+  $('gSteps').textContent = steps.toLocaleString('es-CO');
+  $('gGoal').textContent = Number(cfg.goal).toLocaleString('es-CO');
+  const pct = Math.min(1, steps/cfg.goal); $('ring').style.strokeDashoffset = 144.5*(1-pct);
+  const live = st.mode!=='none';
+  $('btnStart').disabled = !live || st.running;
+  $('btnStop').disabled = !live || !st.running;
+  $('btnConnect').hidden = live; $('btnDemo').hidden = live; $('btnDisconnect').hidden = !live;
+  document.querySelectorAll('#presets button').forEach(b => b.setAttribute('aria-pressed', Math.abs(toUnit(st.targetKmh)-b.dataset.v)<0.05));
+  $('proto').textContent = {none:'—', ftms:'FTMS (estándar Bluetooth)', ks:'KingSmith / WalkingPad', demo:'Demo (simulado)'}[st.mode];
+}
+
+/* ---------- integración local (pasos, kcal, y respaldo de tiempo/distancia) ---------- */
+setInterval(() => {
+  if (!st.running) return;
+  const v = st.actualKmh || (st.mode==='demo' ? st.targetKmh : 0);
+  const ms = v/3.6;
+  st.elapsed += 1;
+  st.distM += ms;
+  const stride = cfg.stride * (0.85 + 0.05*v);   // la zancada crece con la velocidad
+  if (ms>0) st.steps += ms/stride;
+  const vo2 = 3.5 + 0.1*(ms*60);                 // ACSM caminata, ml/kg/min
+  st.kcal += vo2*cfg.weight/1000*5/60;
+  render();
+}, 1000);
+
+/* ---------- velocidad ---------- */
+let speedTimer=null;
+function setTarget(kmh){
+  st.targetKmh = Math.max(st.minKmh, Math.min(cfg.maxKmh, Math.round(kmh*10)/10));
+  render();
+  clearTimeout(speedTimer);
+  speedTimer = setTimeout(() => { if (st.running) driver?.setSpeed(st.targetKmh); }, 250);
+}
+const stepKmh = () => cfg.unit==='mph' ? 0.1*KMH_PER_MPH : 0.1;
+$('minus').onclick = () => setTarget(st.targetKmh - stepKmh());
+$('plus').onclick  = () => setTarget(st.targetKmh + stepKmh());
+
+/* ---------- cola GATT (evita "operation already in progress") ---------- */
+let q = Promise.resolve();
+const enqueue = fn => (q = q.then(fn).catch(e => log('Error: '+e.message)));
+
+/* ---------- driver FTMS ---------- */
+function ftmsDriver(svc, cp, data){
+  const write = bytes => enqueue(() => cp.writeValueWithResponse(new Uint8Array(bytes)));
+  data.addEventListener('characteristicvaluechanged', e => {
+    const d=e.target.value; let o=0; const f=d.getUint16(o,true); o+=2;
+    if (!(f & 1)) { st.actualKmh = d.getUint16(o,true)/100; o+=2; }
+    if (f & 2) o+=2;                                                    // vel. promedio
+    if (f & 4) { st.dev.dist = d.getUint16(o,true) | (d.getUint8(o+2)<<16); o+=3; }
+    if (f & 8) o+=4;                                                    // inclinación
+    if (f & 16) o+=4;                                                   // elevación
+    if (f & 32) o+=1; if (f & 64) o+=1;                                 // ritmo
+    if (f & 128) { const k=d.getUint16(o,true); if (k!==0xFFFF && k>0) st.dev.kcal=k; o+=5; }
+    if (f & 256) o+=1; if (f & 512) o+=1;                               // FC, MET
+    if (f & 1024) { st.dev.time = d.getUint16(o,true); o+=2; }
+    st.running = st.actualKmh > 0.05 || st.running;
+    render();
+  });
+  cp.addEventListener('characteristicvaluechanged', e => {
+    const d=new Uint8Array(e.target.value.buffer); if (d[0]===0x80) log(`CP op 0x${d[1].toString(16)} → ${d[2]===1?'OK':'código '+d[2]}`);
+  });
+  return {
+    async init(){
+      await cp.startNotifications(); await data.startNotifications();
+      try { const r = await svc.getCharacteristic(0x2AD4); const v = await r.readValue();
+        st.minKmh = v.getUint16(0,true)/100 || 0.5; const mx = v.getUint16(2,true)/100; if (mx) cfg.maxKmh = Math.min(cfg.maxKmh, mx);
+        log(`Rango: ${st.minKmh}–${mx} km/h`); } catch(e){ log('Sin rango de velocidad'); }
+      await write([0x00]);                                              // Request Control
+    },
+    start(){ write([0x07]); this.setSpeed(st.targetKmh); },
+    stop(){ write([0x08, 0x01]); },
+    setSpeed(kmh){ const v=Math.round(kmh*100); write([0x02, v&255, v>>8]); }
+  };
+}
+
+/* ---------- driver KingSmith / WalkingPad ---------- */
+function ksDriver(wr, nt){
+  const frame = (cmd,val) => { const b=[0xF7,0xA2,cmd,val]; const crc=(b[1]+b[2]+b[3])&255; return new Uint8Array([...b,crc,0xFD]); };
+  const send = (cmd,val) => enqueue(() => (wr.writeValueWithoutResponse ? wr.writeValueWithoutResponse(frame(cmd,val)) : wr.writeValue(frame(cmd,val))));
+  let poll=null;
+  nt.addEventListener('characteristicvaluechanged', e => {
+    const b=new Uint8Array(e.target.value.buffer);
+    if (b[0]!==0xF8 || b[1]!==0xA2 || b.length<14) return;
+    const u24 = i => (b[i]<<16)|(b[i+1]<<8)|b[i+2];
+    st.actualKmh = b[3]/10;
+    st.running = b[2]===1 || st.actualKmh>0;
+    st.dev.time = u24(5); st.dev.dist = u24(8)*10; st.dev.steps = u24(11);
+    render();
+  });
+  return {
+    async init(){ await nt.startNotifications(); send(0x02,1); poll=setInterval(()=>send(0x00,0),800); },
+    start(){ send(0x02,1); send(0x04,1); setTimeout(()=>this.setSpeed(st.targetKmh),1500); },
+    stop(){ send(0x01,0); },
+    setSpeed(kmh){ send(0x01, Math.round(kmh*10)); },
+    dispose(){ clearInterval(poll); }
+  };
+}
+
+/* ---------- driver demo ---------- */
+function demoDriver(){
+  let ramp=null;
+  const go = to => { clearInterval(ramp); ramp=setInterval(()=>{ const d=to-st.actualKmh;
+    st.actualKmh = Math.abs(d)<0.15 ? to : st.actualKmh + Math.sign(d)*0.15;
+    if (st.actualKmh===to){ clearInterval(ramp); if(!to) st.running=false; } render(); },200); };
+  return { init(){}, start(){ st.running=true; go(st.targetKmh); }, stop(){ go(0); }, setSpeed(k){ go(k); }, dispose(){ clearInterval(ramp); } };
+}
+
+/* ---------- conexión ---------- */
+let driver=null, device=null;
+function showNote(html){ const n=$('btNote'); n.innerHTML=html; n.hidden=false; }
+function btHelp(reason){
+  showNote(`<b>${reason}</b><br>Para controlar la caminadora abre esta página alojada fuera de Claude: en <b>iPhone</b> con el navegador <b>Bluefy</b> (Safari no tiene Bluetooth web), o en <b>Chrome</b> en Android, Mac o Windows. Mientras tanto puedes usar el modo demo.`);
+}
+
+async function connect(){
+  if (!navigator.bluetooth) return btHelp('Este navegador no tiene Bluetooth web.');
+  setStatus('busy','Buscando…');
+  try {
+    device = await navigator.bluetooth.requestDevice({
+      filters:[{services:[0x1826]},{services:[0xFE00]},{namePrefix:'KS-'},{namePrefix:'WalkingPad'},{namePrefix:'FS-'}],
+      optionalServices:[0x1826,0xFE00]
+    });
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+    setStatus('busy','Conectando a '+(device.name||'equipo')+'…');
+    const gatt = await device.gatt.connect();
+    let svc;
+    try { svc = await gatt.getPrimaryService(0x1826);
+      driver = ftmsDriver(svc, await svc.getCharacteristic(0x2AD9), await svc.getCharacteristic(0x2ACD)); st.mode='ftms';
+    } catch(e) {
+      svc = await gatt.getPrimaryService(0xFE00);
+      driver = ksDriver(await svc.getCharacteristic(0xFE02), await svc.getCharacteristic(0xFE01)); st.mode='ks';
+    }
+    await driver.init();
+    $('btNote').hidden=true;
+    setStatus('on', device.name || 'Conectada'); log('Conectado por '+st.mode);
+  } catch(e) {
+    setStatus('off','Sin conectar'); log(e.name+': '+e.message);
+    if (e.name==='SecurityError' || /permission|policy|allowed/i.test(e.message)) btHelp('Bluetooth está bloqueado dentro de esta vista.');
+    else if (e.name!=='NotFoundError') showNote(`<b>No se pudo conectar.</b> ${e.message}. Cierra la app oficial (solo un teléfono puede estar conectado a la vez) y vuelve a intentar.`);
+  }
+  render();
+}
+function onDisconnect(){ driver?.dispose?.(); driver=null; st.mode='none'; st.running=false; st.actualKmh=0; setStatus('off','Desconectada'); log('Desconectado'); render(); }
+
+$('btnConnect').onclick = connect;
+$('btnDemo').onclick = () => { driver=demoDriver(); st.mode='demo'; setStatus('demo','Demo'); render(); };
+$('btnDisconnect').onclick = () => { if (device?.gatt?.connected) device.gatt.disconnect(); else onDisconnect(); };
+
+/* ---------- start / stop ---------- */
+let wake=null;
+async function keepAwake(){ try { wake = await navigator.wakeLock?.request('screen'); } catch(e){} }
+$('btnStart').onclick = () => { driver?.start(); st.running = true; keepAwake(); render(); };
+$('btnStop').onclick  = () => { driver?.stop(); if (st.mode!=='demo'){ st.running=false; } try{wake?.release();}catch(e){} render(); };
+
+/* ---------- ajustes ---------- */
+$('btnSet').onclick = () => { $('optUnit').value=cfg.unit; $('optGoal').value=cfg.goal; $('optWeight').value=cfg.weight; $('optMax').value=cfg.maxKmh; $('optStride').value=cfg.stride; $('dlg').showModal(); };
+$('btnClose').onclick = () => {
+  cfg.unit=$('optUnit').value; cfg.goal=+$('optGoal').value||10000; cfg.weight=+$('optWeight').value||75;
+  cfg.maxKmh=+$('optMax').value||6; cfg.stride=+$('optStride').value||0.65; saveCfg(); renderPresets(); setTarget(st.targetKmh); $('dlg').close();
+};
+$('btnReset').onclick = () => { Object.assign(st,{elapsed:0,distM:0,steps:0,kcal:0,dev:{time:null,dist:null,steps:null,kcal:null}}); render(); };
+
+if (!navigator.bluetooth) btHelp('Este navegador no tiene Bluetooth web.');
+renderPresets(); render();
+})();
+</script>
