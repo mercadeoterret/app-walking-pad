@@ -1,3 +1,12 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0d1016">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}button{touch-action:manipulation}</style>
 <title>Mi Walking Pad</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -66,11 +75,13 @@ dialog::backdrop{background:rgb(0 0 0 / .6)}
 dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spacing:.03em;text-transform:uppercase}
 .field{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .field input,.field select{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;width:110px;font:inherit}
-.log{font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--muted);max-height:90px;overflow:auto;margin-top:12px;white-space:pre-wrap;word-break:break-all}
+.log{font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--muted);max-height:160px;user-select:text;overflow:auto;margin-top:12px;white-space:pre-wrap;word-break:break-all}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
+</head>
+<body>
 <div class="wrap">
   <div class="top">
     <div class="brand">Mi Walking Pad</div>
@@ -79,6 +90,7 @@ dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spaci
 
   <div class="connect">
     <button class="btn primary" id="btnConnect">Conectar caminadora</button>
+    <button class="btn" id="btnScanAll">Ver todos los Bluetooth</button>
     <button class="btn" id="btnDemo">Modo demo</button>
     <button class="btn" id="btnDisconnect" hidden>Desconectar</button>
   </div>
@@ -187,7 +199,7 @@ function render(){
   const live = st.mode!=='none';
   $('btnStart').disabled = !live || st.running;
   $('btnStop').disabled = !live || !st.running;
-  $('btnConnect').hidden = live; $('btnDemo').hidden = live; $('btnDisconnect').hidden = !live;
+  $('btnConnect').hidden = live; $('btnDemo').hidden = live; $('btnScanAll').hidden = live; $('btnDisconnect').hidden = !live;
   document.querySelectorAll('#presets button').forEach(b => b.setAttribute('aria-pressed', Math.abs(toUnit(st.targetKmh)-b.dataset.v)<0.05));
   $('proto').textContent = {none:'—', ftms:'FTMS (estándar Bluetooth)', ks:'KingSmith / WalkingPad', demo:'Demo (simulado)'}[st.mode];
 }
@@ -295,14 +307,24 @@ function btHelp(reason){
   showNote(`<b>${reason}</b><br>Para controlar la caminadora abre esta página alojada fuera de Claude: en <b>iPhone</b> con el navegador <b>Bluefy</b> (Safari no tiene Bluetooth web), o en <b>Chrome</b> en Android, Mac o Windows. Mientras tanto puedes usar el modo demo.`);
 }
 
-async function connect(){
+const OPT_SERVICES = [0x1826,0xFE00,0xFFF0,0xFFE0,0x180A,0x1814,0x1816];
+async function listServices(gatt){
+  try { const ss = await gatt.getPrimaryServices();
+    for (const s of ss){ let line='Servicio '+s.uuid;
+      try { const cs = await s.getCharacteristics(); line += ' → '+cs.map(c=>{ const p=c.properties; return c.uuid.slice(4,8)+'['+(p.read?'R':'')+(p.write?'W':'')+(p.writeWithoutResponse?'w':'')+(p.notify?'N':'')+(p.indicate?'I':'')+']'; }).join(', '); } catch(e){}
+      log(line); }
+  } catch(e){ log('No se pudieron listar servicios: '+e.message); }
+}
+async function connect(all){
+  $('btNote').hidden = true;
   if (!navigator.bluetooth) return btHelp('Este navegador no tiene Bluetooth web.');
   setStatus('busy','Buscando…');
   try {
-    device = await navigator.bluetooth.requestDevice({
-      filters:[{services:[0x1826]},{services:[0xFE00]},{namePrefix:'KS-'},{namePrefix:'WalkingPad'},{namePrefix:'FS-'}],
-      optionalServices:[0x1826,0xFE00]
-    });
+    device = await navigator.bluetooth.requestDevice(all
+      ? {acceptAllDevices:true, optionalServices:OPT_SERVICES}
+      : {filters:[{services:[0x1826]},{services:[0xFE00]},{namePrefix:'KS-'},{namePrefix:'WalkingPad'},{namePrefix:'FS-'},{namePrefix:'Walk'},{namePrefix:'Treadmill'}],
+         optionalServices:OPT_SERVICES});
+    log('Elegido: '+(device.name||'(sin nombre)'));
     device.addEventListener('gattserverdisconnected', onDisconnect);
     setStatus('busy','Conectando a '+(device.name||'equipo')+'…');
     const gatt = await device.gatt.connect();
@@ -310,8 +332,13 @@ async function connect(){
     try { svc = await gatt.getPrimaryService(0x1826);
       driver = ftmsDriver(svc, await svc.getCharacteristic(0x2AD9), await svc.getCharacteristic(0x2ACD)); st.mode='ftms';
     } catch(e) {
-      svc = await gatt.getPrimaryService(0xFE00);
-      driver = ksDriver(await svc.getCharacteristic(0xFE02), await svc.getCharacteristic(0xFE01)); st.mode='ks';
+      try { svc = await gatt.getPrimaryService(0xFE00);
+        driver = ksDriver(await svc.getCharacteristic(0xFE02), await svc.getCharacteristic(0xFE01)); st.mode='ks';
+      } catch(e2) {
+        await listServices(gatt);
+        $('btnSet').click();
+        throw new Error('El equipo no usa FTMS ni KingSmith. Copia el log de Ajustes y envíalo para adaptar la app');
+      }
     }
     await driver.init();
     $('btNote').hidden=true;
@@ -325,7 +352,8 @@ async function connect(){
 }
 function onDisconnect(){ driver?.dispose?.(); driver=null; st.mode='none'; st.running=false; st.actualKmh=0; setStatus('off','Desconectada'); log('Desconectado'); render(); }
 
-$('btnConnect').onclick = connect;
+$('btnConnect').onclick = () => connect(false);
+$('btnScanAll').onclick = () => connect(true);
 $('btnDemo').onclick = () => { driver=demoDriver(); st.mode='demo'; setStatus('demo','Demo'); render(); };
 $('btnDisconnect').onclick = () => { if (device?.gatt?.connected) device.gatt.disconnect(); else onDisconnect(); };
 
@@ -343,7 +371,11 @@ $('btnClose').onclick = () => {
 };
 $('btnReset').onclick = () => { Object.assign(st,{elapsed:0,distM:0,steps:0,kcal:0,dev:{time:null,dist:null,steps:null,kcal:null}}); render(); };
 
-if (!navigator.bluetooth) btHelp('Este navegador no tiene Bluetooth web.');
+// Bluefy y otros navegadores inyectan navigator.bluetooth después de cargar: revisar con retraso
+setTimeout(() => { if (!navigator.bluetooth) btHelp('Este navegador no tiene Bluetooth web.'); }, 2500);
 renderPresets(); render();
 })();
 </script>
+
+</body>
+</html>
