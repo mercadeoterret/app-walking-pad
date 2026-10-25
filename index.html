@@ -150,6 +150,12 @@ dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spaci
 .field input,.field select{width:110px}
 .log{font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--muted);max-height:160px;user-select:text;overflow:auto;margin-top:12px;white-space:pre-wrap;word-break:break-all}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.sim{position:relative;border-radius:16px;overflow:hidden;background:var(--panel)}
+.sim canvas{display:block;width:100%;height:190px}
+.simhud{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;gap:8px;padding:8px 10px;font-size:12px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgb(0 0 0 / .7);pointer-events:none}
+.simhud span{background:rgb(0 0 0 / .35);padding:3px 8px;border-radius:99px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.simfoot{position:absolute;left:10px;right:10px;bottom:8px;font-size:12px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgb(0 0 0 / .8);display:flex;justify-content:space-between;pointer-events:none;font-variant-numeric:tabular-nums}
+#focus .sim canvas{height:min(30vh,240px)}
 .ver{text-align:center;font-size:11px;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -179,6 +185,9 @@ dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spaci
 
   <!-- CONTROL -->
   <section class="pane" id="pane-control">
+    <div class="sim"><canvas id="sim" aria-label="Simulador de la ruta"></canvas>
+      <div class="simhud"><span id="hudL">km 0</span><span id="hudR">—</span></div>
+      <div class="simfoot"><span id="hudGhost"></span><span id="hudAlt"></span></div></div>
     <div class="stats">
       <div class="stat"><div class="v" id="sTime">00:00</div><div class="l">Tiempo</div></div>
       <div class="stat"><div class="v" id="sDist">0.00</div><div class="l" id="sDistU">mi</div></div>
@@ -299,7 +308,7 @@ dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spaci
     </div>
   </section>
 
-  <div class="ver" id="ver">v6</div>
+  <div class="ver" id="ver">v7</div>
 </div>
 
 <div id="focus" hidden>
@@ -308,6 +317,7 @@ dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spaci
     <div class="fs" id="fSpeed">1.9</div>
   </div>
   <div class="fi" id="fProg" hidden><div><div class="sub" id="fpName"></div><span class="lvl" id="fpLvl"></span></div><div class="cd" id="fpCd">0:00</div></div>
+  <div class="sim"><canvas id="fSim"></canvas><div class="simhud"><span id="fhudL"></span><span id="fhudR"></span></div><div class="simfoot"><span id="fhudGhost"></span><span></span></div></div>
   <div class="fi" id="fRoute"><div style="min-width:0"><div class="sub">Próxima parada</div><div class="ttl" id="frNext">—</div></div><div class="cd" id="frLeft" style="font-size:28px">—</div></div>
   <div class="fg">
     <div><div class="v" id="fTime">00:00</div><div class="l">Tiempo</div></div>
@@ -327,6 +337,7 @@ dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spaci
   <div class="field"><label for="optMax">Velocidad máx. (km/h)</label><input id="optMax" type="number" min="3" max="20" step="0.5"></div>
   <div class="field"><label for="optStride">Zancada (m)</label><input id="optStride" type="number" min="0.4" max="1.2" step="0.01"></div>
   <div class="field"><label for="optCal">Calibración distancia (%)</label><input id="optCal" type="number" min="80" max="120" step="1"></div>
+  <div class="field"><label for="optGhost">Liebre (km/h, 0 = sin liebre)</label><input id="optGhost" type="number" min="0" max="10" step="0.1"></div>
   <div class="field"><label for="optVoice">Voz y pitidos</label><select id="optVoice"><option value="1">Activados</option><option value="0">Apagados</option></select></div>
   <div class="field"><span>Protocolo</span><span id="proto" style="color:var(--muted)">—</span></div>
   <div class="log" id="log"></div>
@@ -342,7 +353,7 @@ const KMH_PER_MPH = 1.609344;
 const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch(e){ return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
 
-const defaults = {unit:'mph', goal:10000, weight:75, maxKmh:6, stride:0.65, soft:3.0, fast:5.0, cal:100, voice:1, autoStop:''};
+const defaults = {unit:'mph', goal:10000, weight:75, maxKmh:6, stride:0.65, soft:3.0, fast:5.0, cal:100, voice:1, autoStop:'', ghost:3.5};
 let cfg = {...defaults, ...load('wp-cfg', {})};
 const saveCfg = () => save('wp-cfg', cfg);
 let sessions = load('wp-sessions', []);        // [{t, dur, dist, steps, kcal, route, prog}]
@@ -569,7 +580,7 @@ function renderRoutes(){
     const km=(routeState.done[r.id]||0)/1000, len=routeLen(r), medal = routeState.medals[r.id];
     b.innerHTML = `<div class="grow"><div class="ttl" style="font-size:17px">${r.name}${medal?'<span class="medal">Completada ×'+medal+'</span>':''}</div>
       <div class="sub">${r.tag}${km>0&&km<len?` · llevas ${fmtKm(km)} km`:''}</div></div><div class="kms">${len} km</div>`;
-    b.onclick = () => { routeState.active=r.id; save('wp-routes',routeState); renderRoutes(); render(); toast('Ruta activa: '+r.name); };
+    b.onclick = () => { routeState.active=r.id; simM=null; save('wp-routes',routeState); renderRoutes(); render(); toast('Ruta activa: '+r.name); };
     $('routeList').appendChild(b);
   });
 }
@@ -683,6 +694,151 @@ function renderProgress(){
     <div class="r"><span>Mayor distancia</span><span></span><span>${fd(best(s=>s.dist).t)}</span><span>${distU(best(s=>s.dist).dist).toFixed(2)} ${dU()}</span></div>`;
   $('hist').innerHTML = sessions.slice(-15).reverse().map(s => `<div class="r"><span>${new Date(s.t).toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})} ${new Date(s.t).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})}</span><span>${fmtTime(s.dur)}</span><span>${distU(s.dist).toFixed(2)} ${dU()}</span><span>${fmtN(s.steps)} p</span></div>`).join('');
 }
+
+
+/* ---------- simulador visual ---------- */
+const hash = n => { const x = Math.sin(n*127.1+311.7)*43758.5453; return x - Math.floor(x); };
+function altAt(r, k){ for (let i=1;i<r.stops.length;i++){ const [,k1,a1]=r.stops[i-1], [,k2,a2]=r.stops[i]; if (k<=k2){ const f=(k-k1)/((k2-k1)||1); return a1+(a2-a1)*(0.5-0.5*Math.cos(Math.PI*f)); } } return r.stops.at(-1)[2]; }
+let simM = null, phase = 0, lastFrame = performance.now(), ghostLapAnnounced = 0;
+const URBAN = new Set(['metro','nutibara']);
+function skyFor(h){
+  if (h>=6 && h<17) return {top:'#4f9be8', bot:'#bfe0ff', night:false, sun:'#fff3c4'};
+  if (h>=17 && h<19) return {top:'#3a3f78', bot:'#f39a6b', night:false, sun:'#ffd27a'};
+  if (h>=5 && h<6) return {top:'#2b3768', bot:'#e8a27e', night:false, sun:'#ffd27a'};
+  return {top:'#070d1f', bot:'#1d2b4f', night:true, sun:'#f4f1e0'};
+}
+function drawSim(cv, hud){
+  if (!cv || !cv.offsetParent) return;
+  const dpr = Math.min(2, window.devicePixelRatio||1), W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W*dpr) || cv.height !== Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+  const info = routeInfo(), r = info.r, len = info.len*1000;
+  const pos = Math.min(len, simM ?? info.km*1000);
+  const km = pos/1000, alt = altAt(r, km);
+  const sky = skyFor(new Date().getHours());
+  const S = 6;                       // píxeles por metro en primer plano
+  const groundY = H*0.72, wx = W*0.34;
+
+  // cielo
+  const gr = g.createLinearGradient(0,0,0,groundY); gr.addColorStop(0,sky.top); gr.addColorStop(1,sky.bot);
+  g.fillStyle = gr; g.fillRect(0,0,W,groundY);
+  if (sky.night){ g.fillStyle='#ffffff'; for (let i=0;i<60;i++){ const x=hash(i)*W, y=hash(i+99)*groundY*0.7; g.globalAlpha=0.3+0.7*hash(i+7); g.fillRect(x,y,1.3,1.3);} g.globalAlpha=1; }
+  g.fillStyle = sky.sun; g.beginPath(); g.arc(W*0.82, H*0.2, sky.night?9:14, 0, 7); g.fill();
+  if (sky.night){ g.fillStyle = sky.top; g.beginPath(); g.arc(W*0.82+5, H*0.2-3, 8, 0, 7); g.fill(); }
+
+  // montañas (paralaje); más altas cuando estás arriba
+  const lift = Math.min(1, Math.max(0,(alt-500)/2000));
+  const ridge = (off, amp, base, col, scale) => {
+    g.fillStyle = col; g.beginPath(); g.moveTo(0,groundY);
+    for (let x=0;x<=W;x+=6){ const u=(x+off)/scale; const y = base - amp*(0.55*Math.sin(u)+0.3*Math.sin(u*2.3+1)+0.15*Math.sin(u*5.1+2)); g.lineTo(x,y); }
+    g.lineTo(W,groundY); g.closePath(); g.fill();
+  };
+  ridge(pos*S*0.01, 22+18*lift, groundY*0.62, sky.night?'#1a2742':'#6f8fb0', 90);
+  ridge(pos*S*0.03, 18+14*lift, groundY*0.78, sky.night?'#16301f':'#3f7a4e', 60);
+
+  // ciudad (rutas urbanas o mientras estés en el valle)
+  if (URBAN.has(r.id) || (alt>1300 && alt<1700 && km<6)){
+    const off = pos*S*0.15, bw = 26;
+    for (let i=Math.floor(off/bw)-1; i<(off+W)/bw+1; i++){
+      const x = i*bw - off, h = 18 + hash(i)*52;
+      g.fillStyle = sky.night ? '#141c2c' : '#8a9bb3'; g.fillRect(x, groundY-h, bw-3, h);
+      if (sky.night){ g.fillStyle='#ffd27a'; for (let j=0;j<h/9-1;j++) for (let k2=0;k2<2;k2++) if (hash(i*13+j*3+k2)>0.55) g.fillRect(x+5+k2*9, groundY-h+5+j*9, 4, 4); }
+    }
+  }
+
+  // suelo y carretera
+  g.fillStyle = alt<600 ? (r.id==='cartagena'&&km>620 ? '#e3cf9a' : '#8a7a3c') : (sky.night?'#16301f':'#4f8a3c'); g.fillRect(0,groundY,W,H-groundY);
+  g.fillStyle = sky.night ? '#2a2f38' : '#4a4f58'; g.fillRect(0,groundY+8,W,H*0.16);
+  g.fillStyle = '#e8d36a'; const dash = 4*S;
+  for (let x = -((pos*S)%(dash*2)); x<W; x+=dash*2) g.fillRect(x, groundY+8+H*0.08-1, dash, 2);
+  if (r.id==='cartagena' && km>625){ g.fillStyle='#2f7fb8'; g.fillRect(W*0.6, groundY-6, W*0.4, 10); }
+
+  // árboles y postes según la altura (bioma)
+  const sp = 11, first = Math.floor((pos - wx/S)/sp)-1, last = Math.ceil((pos + (W-wx)/S)/sp)+1;
+  for (let i=first;i<=last;i++){
+    if (hash(i)<0.35) continue;
+    const x = wx + (i*sp - pos)*S, a = altAt(r, Math.max(0,i*sp)/1000);
+    const yb = groundY+6;
+    if (i % 5 === 0){ // poste de luz
+      g.fillStyle='#596273'; g.fillRect(x,yb-46,2,46); g.fillRect(x,yb-46,10,2);
+      if (sky.night){ g.fillStyle='rgba(255,210,122,.25)'; g.beginPath(); g.moveTo(x+9,yb-44); g.lineTo(x-6,yb); g.lineTo(x+24,yb); g.fill(); g.fillStyle='#ffd27a'; g.fillRect(x+7,yb-45,4,3); }
+      continue;
+    }
+    const sz = 0.7 + hash(i+5)*0.6;
+    if (a > 2000){ // pino
+      g.fillStyle = sky.night?'#0f2a1c':'#24563a'; g.beginPath(); g.moveTo(x,yb-44*sz); g.lineTo(x-11*sz,yb-6); g.lineTo(x+11*sz,yb-6); g.fill();
+      g.fillStyle='#4a3524'; g.fillRect(x-1.5,yb-7,3,7);
+    } else if (a < 1000){ // palma
+      g.strokeStyle='#7a5a34'; g.lineWidth=3; g.beginPath(); g.moveTo(x,yb); g.quadraticCurveTo(x+4,yb-20*sz,x+2,yb-38*sz); g.stroke();
+      g.strokeStyle = sky.night?'#1d4a2a':'#3b9a4c'; g.lineWidth=3;
+      for (let k3=0;k3<5;k3++){ const an=-2.6+k3*0.55; g.beginPath(); g.moveTo(x+2,yb-38*sz); g.quadraticCurveTo(x+2+Math.cos(an)*10,yb-38*sz+Math.sin(an)*10-4,x+2+Math.cos(an)*18*sz,yb-38*sz+Math.sin(an)*8+6); g.stroke(); }
+    } else { // árbol redondo
+      g.fillStyle='#4a3524'; g.fillRect(x-1.5,yb-14,3,14);
+      g.fillStyle = sky.night?'#173a24':'#3f8f45'; g.beginPath(); g.arc(x,yb-20*sz,11*sz,0,7); g.fill();
+    }
+  }
+
+  // hitos cada 100 m y paradas
+  const markEvery = 100;
+  for (let m = Math.floor((pos - wx/S)/markEvery)*markEvery; m < pos + (W-wx)/S; m += markEvery){
+    if (m<=0) continue; const x = wx + (m-pos)*S;
+    g.fillStyle='#e9eef5'; g.fillRect(x-1,groundY+2,2,10);
+    g.font='600 10px Figtree, system-ui, sans-serif'; g.textAlign='center'; g.fillStyle='#fff';
+    g.fillText(m%1000===0 ? `km ${m/1000}` : `${(m/1000).toFixed(1)}`, x, groundY+H*0.25);
+  }
+  r.stops.forEach(st0 => {
+    const x = wx + (st0[1]*1000 - pos)*S; if (x < -80 || x > W+80) return;
+    g.font='700 12px Figtree, system-ui, sans-serif'; const tw = g.measureText(st0[0]).width + 14;
+    g.fillStyle='#596273'; g.fillRect(x-1,groundY-58,3,64);
+    g.fillStyle='#1f7a4a'; g.fillRect(x-tw/2,groundY-80,tw,22); g.strokeStyle='#fff'; g.lineWidth=1.5; g.strokeRect(x-tw/2+2,groundY-78,tw-4,18);
+    g.fillStyle='#fff'; g.textAlign='center'; g.fillText(st0[0], x, groundY-65);
+  });
+
+  // aviso de parada próxima fuera de cámara
+  if (info.next){ const dm = info.next[1]*1000 - pos, x = wx + dm*S;
+    if (x > W-20 && dm < 1000){ g.font='700 11px Figtree, system-ui, sans-serif'; const t=`${info.next[0]} · ${Math.round(dm)} m ▶`; const tw=g.measureText(t).width+14;
+      g.fillStyle='#1f7a4a'; g.fillRect(W-tw-8,groundY-34,tw,20); g.fillStyle='#fff'; g.textAlign='right'; g.fillText(t,W-15,groundY-20); } }
+  // liebre
+  const s = sess(); let ghostTxt = '';
+  if (cfg.ghost > 0 && st.sessionStart){
+    const gd = cfg.ghost/3.6*s.time, diff = s.dist - gd; const gx = wx - diff*S;
+    ghostTxt = diff>=0 ? `Le sacas ${Math.round(diff)} m a la liebre` : `Liebre ${Math.round(-diff)} m adelante`;
+    if (gx > W-12){ g.fillStyle='rgba(255,255,255,.8)'; g.font='700 11px Figtree, system-ui'; g.textAlign='right'; g.fillText(`liebre ▶ ${Math.round(-diff)} m`, W-8, groundY-6); }
+    else if (gx < 12){ g.fillStyle='rgba(255,255,255,.8)'; g.font='700 11px Figtree, system-ui'; g.textAlign='left'; g.fillText(`◀ liebre ${Math.round(diff)} m`, 8, groundY-6); }
+    else walker(g, gx, groundY+18, phase*cfg.ghost/Math.max(1,(st.actualKmh||st.targetKmh)), 'rgba(255,255,255,.45)', 'rgba(255,255,255,.3)');
+  }
+  // caminante
+  walker(g, wx, groundY+18, phase, '#ff5a3c', '#eef1f6');
+
+  // HUD
+  hud.L.textContent = `${r.stops[0][0]} · km ${km.toFixed(2)}`;
+  hud.R.textContent = info.next ? `${info.next[0]} en ${fmtKm(info.next[1]-km)} km` : 'Ruta completada';
+  if (hud.G) hud.G.textContent = ghostTxt;
+  if (hud.A) hud.A.textContent = `${Math.round(alt)} m.s.n.m.`;
+}
+function walker(g, x, y, ph, shirt, skin){
+  const sw = Math.sin(ph)*0.55, moving = st.running;
+  const legA = moving ? sw : 0, legB = moving ? -sw : 0;
+  g.lineCap='round'; g.strokeStyle='#1d2433'; g.lineWidth=4;
+  const hip = [x, y-26];
+  [[legA],[legB]].forEach(([a]) => { g.beginPath(); g.moveTo(hip[0],hip[1]); const kx=hip[0]+Math.sin(a)*12, ky=hip[1]+Math.cos(a)*12; g.lineTo(kx,ky); g.lineTo(kx+Math.sin(a-0.25)*12, ky+Math.cos(a-0.25)*12); g.stroke(); });
+  g.strokeStyle=shirt; g.lineWidth=7; g.beginPath(); g.moveTo(x,y-27); g.lineTo(x+1,y-46); g.stroke();
+  g.lineWidth=3.5; g.strokeStyle=skin;
+  [[legB],[legA]].forEach(([a]) => { g.beginPath(); g.moveTo(x+1,y-44); g.lineTo(x+1+Math.sin(a)*10, y-44+Math.cos(a)*10); g.lineTo(x+1+Math.sin(a+0.6)*16, y-44+Math.cos(a)*10+Math.cos(a+0.6)*6); g.stroke(); });
+  g.fillStyle=skin; g.beginPath(); g.arc(x+2,y-53,6,0,7); g.fill();
+}
+function frame(now){
+  const dt = Math.min(0.1, (now-lastFrame)/1000); lastFrame = now;
+  const v = st.running ? (st.actualKmh || (st.mode==='demo'?st.targetKmh:0)) : 0;
+  const info = routeInfo(), target = info.km*1000;
+  if (simM == null || Math.abs(simM - target) > 40) simM = target;
+  simM += v/3.6*dt*cfg.cal/100; simM += (target - simM)*0.03;
+  phase += dt * (v/3.6) / Math.max(0.3, cfg.stride) * Math.PI;
+  drawSim($('sim'), {L:$('hudL'), R:$('hudR'), G:$('hudGhost'), A:$('hudAlt')});
+  if (!$('focus').hidden) drawSim($('fSim'), {L:$('fhudL'), R:$('fhudR'), G:$('fhudGhost')});
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
 
 /* ---------- pantalla grande ---------- */
 function renderFocus(){
@@ -903,15 +1059,15 @@ $('btnStop').onclick  = stopBelt;
 document.addEventListener('visibilitychange', () => { if (!document.hidden && st.running) keepAwake(); });
 
 /* ---------- ajustes ---------- */
-$('btnSet').onclick = () => { $('optUnit').value=cfg.unit; $('optGoal').value=cfg.goal; $('optWeight').value=cfg.weight; $('optMax').value=cfg.maxKmh; $('optStride').value=cfg.stride; $('optCal').value=cfg.cal; $('optVoice').value=String(cfg.voice); $('dlg').showModal(); };
+$('btnSet').onclick = () => { $('optUnit').value=cfg.unit; $('optGoal').value=cfg.goal; $('optWeight').value=cfg.weight; $('optMax').value=cfg.maxKmh; $('optStride').value=cfg.stride; $('optCal').value=cfg.cal; $('optVoice').value=String(cfg.voice); $('optGhost').value=cfg.ghost; $('dlg').showModal(); };
 $('btnClose').onclick = () => {
   cfg.unit=$('optUnit').value; cfg.goal=+$('optGoal').value||10000; cfg.weight=+$('optWeight').value||75;
-  cfg.maxKmh=+$('optMax').value||6; cfg.stride=+$('optStride').value||0.65; cfg.cal=Math.min(120,Math.max(80,+$('optCal').value||100)); cfg.voice=+$('optVoice').value;
+  cfg.maxKmh=+$('optMax').value||6; cfg.stride=+$('optStride').value||0.65; cfg.cal=Math.min(120,Math.max(80,+$('optCal').value||100)); cfg.voice=+$('optVoice').value; cfg.ghost=Math.max(0,+$('optGhost').value||0);
   saveCfg(); renderPresets(); setTarget(st.targetKmh); $('dlg').close(); if (tab!=='control') showTab(tab);
 };
 $('btnReset').onclick = () => { Object.assign(st,{elapsed:0,distM:0,steps:0,kcal:0}); resetBase(); render(); };
 
-setTimeout(() => { $('ver').textContent = 'v6 · Bluetooth web: ' + (navigator.bluetooth ? 'sí' : 'no');
+setTimeout(() => { $('ver').textContent = 'v7 · Bluetooth web: ' + (navigator.bluetooth ? 'sí' : 'no');
   if (!navigator.bluetooth) btHelp('Este navegador no tiene Bluetooth web.'); }, 2500);
 window.addEventListener('error', e => log('JS: '+e.message));
 window.addEventListener('unhandledrejection', e => log('Promesa: '+(e.reason?.message||e.reason)));
