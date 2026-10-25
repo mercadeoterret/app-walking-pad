@@ -13,11 +13,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
 <style>
-/* Layout: consola de caminadora en una sola columna; métricas arriba, control de velocidad al centro, start/stop abajo */
+/* Layout: consola de caminadora en una columna; pestañas Control · Rutas · Intervalos · Progreso */
 :root{
   --bg:#0d1016; --panel:#151a23; --panel-2:#1c2330; --line:#262f3e;
   --fg:#eef1f6; --muted:#8a94a6; --accent:#ff5a3c; --accent-ink:#1a0a05;
-  --go:#3ddc97; --go-ink:#04140d; --warn:#ffb547;
+  --go:#3ddc97; --go-ink:#04140d; --warn:#ffb547; --sky:#6cb6ff;
   --display:"Saira Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:dark;
@@ -41,17 +41,30 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .connect{display:flex;gap:8px;flex-wrap:wrap}
 .btn{padding:11px 16px;border-radius:12px;background:var(--panel-2);font-weight:600;font-size:14px}
 .btn.primary{background:var(--fg);color:var(--bg)}
+.btn.go{background:var(--go);color:var(--go-ink)}
+.btn.sm{padding:8px 12px;font-size:13px;border-radius:10px}
 .btn:disabled{opacity:.4;cursor:default}
 .note{font-size:13px;line-height:1.5;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .note b{color:var(--fg)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--panel);border-radius:14px;padding:4px;gap:4px}
+.tabs button{padding:10px 0;border-radius:10px;font-weight:600;font-size:13px;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--panel-2);color:var(--fg)}
+.pane{display:flex;flex-direction:column;gap:14px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-radius:16px;overflow:hidden}
 .stat{background:var(--panel);padding:12px 6px 10px;text-align:center;min-width:0}
 .stat .v{font-family:var(--display);font-weight:600;font-size:clamp(22px,7vw,30px);line-height:1;font-variant-numeric:tabular-nums}
 .stat .l{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px}
-.goal{display:flex;align-items:center;gap:14px;background:var(--panel);border-radius:16px;padding:12px 14px}
-.goal svg{flex:none}
-.goal .t{font-size:13px;color:var(--muted)}
-.goal .n{font-family:var(--display);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.card{background:var(--panel);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.card .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ttl{font-family:var(--display);font-size:20px;font-weight:600;line-height:1.1}
+.sub{font-size:13px;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:99px;background:var(--panel-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--go);border-radius:99px;transition:width .4s}
+.bar.orange i{background:var(--accent)}
+.goalrow{display:flex;align-items:center;gap:14px}
+.goalrow svg{flex:none}
 .speed{background:var(--panel);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .speed h2{margin:0;text-align:center;font-weight:500;font-size:16px}
 .speed h2 span{color:var(--muted)}
@@ -64,21 +77,80 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .presets{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-radius:12px;overflow:hidden}
 .presets button{background:var(--bg);padding:14px 0;font-family:var(--display);font-size:24px;color:var(--muted)}
 .presets button[aria-pressed="true"]{color:var(--fg);background:var(--panel-2)}
-.actions{display:flex;justify-content:center;gap:40px;padding-top:4px}
-.act{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px}
-.act .c{width:76px;height:76px;border-radius:50%;display:grid;place-items:center}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding-top:4px;justify-items:center}
+.act{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px}
+.act .c{width:62px;height:62px;border-radius:50%;display:grid;place-items:center}
 .act.start .c{background:var(--go);color:var(--go-ink)}
 .act.stop .c{background:var(--accent);color:var(--accent-ink)}
 .act.set .c{background:var(--panel-2)}
 .act:disabled{opacity:.35;cursor:default}
-.ver{text-align:center;font-size:11px;color:var(--muted)}
-dialog{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:18px;padding:18px;width:min(420px,calc(100vw - 32px))}
+.autostop{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel);border-radius:14px;padding:10px 14px;font-size:14px}
+select,input{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+/* rutas */
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;align-items:center;gap:12px;background:var(--panel);border-radius:14px;padding:12px 14px;text-align:left;width:100%;border:1px solid transparent}
+.item[aria-pressed="true"]{border-color:var(--go)}
+.item .grow{flex:1;min-width:0}
+.item .kms{font-family:var(--display);font-size:20px;font-weight:600;white-space:nowrap}
+.medal{font-size:11px;font-weight:600;color:var(--go-ink);background:var(--go);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+.profile{width:100%;height:auto;display:block}
+.stops{display:flex;flex-direction:column;gap:0;font-size:14px}
+.stop{display:grid;grid-template-columns:16px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.stop:last-child{border-bottom:0}
+.stop .pt{width:10px;height:10px;border-radius:50%;border:2px solid var(--muted)}
+.stop.done .pt{background:var(--go);border-color:var(--go)}
+.stop.next .pt{border-color:var(--accent);box-shadow:0 0 0 3px rgb(255 90 60 / .25)}
+.stop.done{color:var(--muted)}
+.stop .alt{font-size:12px;color:var(--muted)}
+/* intervalos */
+.segs{display:flex;height:34px;border-radius:8px;overflow:hidden;gap:1px;align-items:flex-end;background:var(--bg)}
+.segs i{display:block;background:var(--sky);min-width:1px;border-radius:2px 2px 0 0}
+.segs i.on{background:var(--accent)}
+.segs i.done{background:var(--line)}
+.progcard .now{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.progcard .cd{font-family:var(--display);font-size:40px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.lvl{font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--panel-2)}
+.lvl.F{background:var(--accent);color:var(--accent-ink)} .lvl.P{background:var(--accent);color:var(--accent-ink)}
+.lvl.S,.lvl.W,.lvl.C{background:var(--sky);color:#06121f} .lvl.M{background:var(--warn);color:#1d1203}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.twocol label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.twocol input{width:100%}
+/* progreso */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpi{background:var(--panel);border-radius:14px;padding:12px;text-align:center}
+.kpi .v{font-family:var(--display);font-size:28px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:120px}
+.week .col{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.week .b{width:100%;background:var(--sky);border-radius:6px 6px 2px 2px;min-height:2px}
+.week .col.today .b{background:var(--go)}
+.week .d{font-size:11px;color:var(--muted)}
+.week .n{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hist{font-size:13px}
+.hist .r{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.hist .r span:first-child{color:var(--muted)}
+.empty{color:var(--muted);font-size:13px;text-align:center;padding:12px}
+/* pantalla grande */
+#focus{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;justify-content:space-between;
+  padding:calc(20px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
+#focus .fs{font-family:var(--display);font-weight:700;color:var(--accent);font-size:min(38vw,30vh);line-height:.9;text-align:center;font-variant-numeric:tabular-nums}
+#focus .fu{text-align:center;color:var(--muted);font-size:16px}
+#focus .fg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+#focus .fg .v{font-family:var(--display);font-size:min(11vw,48px);font-weight:600;font-variant-numeric:tabular-nums}
+#focus .fg .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+#focus .fi{background:var(--panel);border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+#focus .fi .cd{font-family:var(--display);font-size:44px;font-weight:700;font-variant-numeric:tabular-nums}
+#focus .fbtns{display:flex;gap:10px}
+#focus .fbtns button{flex:1;padding:18px 0;border-radius:14px;font-size:30px;background:var(--panel-2)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:600;z-index:60;max-width:calc(100vw - 32px);text-align:center;box-shadow:0 8px 30px rgb(0 0 0 / .4)}
+dialog{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:18px;padding:18px;width:min(420px,calc(100vw - 32px));max-height:85vh}
 dialog::backdrop{background:rgb(0 0 0 / .6)}
 dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spacing:.03em;text-transform:uppercase}
 .field{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
-.field input,.field select{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;width:110px;font:inherit}
+.field input,.field select{width:110px}
 .log{font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--muted);max-height:160px;user-select:text;overflow:auto;margin-top:12px;white-space:pre-wrap;word-break:break-all}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.ver{text-align:center;font-size:11px;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -98,47 +170,164 @@ dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spaci
   </div>
   <div class="note" id="btNote" hidden></div>
 
-  <div class="stats">
-    <div class="stat"><div class="v" id="sTime">00:00</div><div class="l">Tiempo</div></div>
-    <div class="stat"><div class="v" id="sDist">0.00</div><div class="l" id="sDistU">mi</div></div>
-    <div class="stat"><div class="v" id="sSteps">0</div><div class="l">Pasos</div></div>
-    <div class="stat"><div class="v" id="sKcal">0</div><div class="l">kcal</div></div>
+  <div class="tabs" role="tablist">
+    <button role="tab" data-tab="control" aria-selected="true">Control</button>
+    <button role="tab" data-tab="rutas" aria-selected="false">Rutas</button>
+    <button role="tab" data-tab="intervalos" aria-selected="false">Intervalos</button>
+    <button role="tab" data-tab="progreso" aria-selected="false">Progreso</button>
   </div>
 
-  <div class="goal">
-    <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
-      <circle cx="28" cy="28" r="23" fill="none" stroke="var(--line)" stroke-width="6"/>
-      <circle id="ring" cx="28" cy="28" r="23" fill="none" stroke="var(--go)" stroke-width="6" stroke-linecap="round"
-        stroke-dasharray="144.5" stroke-dashoffset="144.5" transform="rotate(-90 28 28)"/>
-    </svg>
-    <div><div class="t">Meta de la sesión</div><div class="n"><span id="gSteps">0</span> / <span id="gGoal">10000</span> pasos</div></div>
-  </div>
-
-  <div class="speed">
-    <h2>Velocidad <span id="uLbl">(mph)</span></h2>
-    <div class="dial">
-      <button id="minus" aria-label="Bajar velocidad">−</button>
-      <div class="val"><div class="big" id="target">1.9</div><div class="real" id="real">real 0.0</div></div>
-      <button id="plus" aria-label="Subir velocidad">+</button>
+  <!-- CONTROL -->
+  <section class="pane" id="pane-control">
+    <div class="stats">
+      <div class="stat"><div class="v" id="sTime">00:00</div><div class="l">Tiempo</div></div>
+      <div class="stat"><div class="v" id="sDist">0.00</div><div class="l" id="sDistU">mi</div></div>
+      <div class="stat"><div class="v" id="sSteps">0</div><div class="l">Pasos</div></div>
+      <div class="stat"><div class="v" id="sKcal">0</div><div class="l">kcal</div></div>
     </div>
-    <div class="presets" id="presets"></div>
-  </div>
 
-  <div class="actions">
-    <button class="act start" id="btnStart"><span class="c"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></span>Iniciar</button>
-    <button class="act stop" id="btnStop"><span class="c"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg></span>Detener</button>
-    <button class="act set" id="btnSet"><span class="c"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></span>Ajustes</button>
-  </div>
-  <div class="ver" id="ver">v5</div>
+    <div class="card progcard" id="progCard" hidden>
+      <div class="h"><span class="eyebrow" id="pcName">Programa</span><span class="sub num" id="pcLeft"></span></div>
+      <div class="now"><div><span class="lvl" id="pcLvl">Suave</span> <span class="sub" id="pcNext"></span></div><div class="cd" id="pcCd">0:00</div></div>
+      <div class="segs" id="pcSegs"></div>
+      <div class="row" style="margin-top:0"><button class="btn sm" id="pcSkip">Saltar bloque</button><button class="btn sm" id="pcEnd">Terminar programa</button></div>
+    </div>
+
+    <div class="card" id="routeMini">
+      <div class="h"><span class="eyebrow">Ruta activa</span><span class="sub num" id="rmPct">0%</span></div>
+      <div class="ttl" id="rmName">—</div>
+      <div class="bar"><i id="rmBar" style="width:0%"></i></div>
+      <div class="sub" id="rmNext">Elige una ruta en la pestaña Rutas.</div>
+    </div>
+
+    <div class="card">
+      <div class="goalrow">
+        <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+          <circle cx="28" cy="28" r="23" fill="none" stroke="var(--line)" stroke-width="6"/>
+          <circle id="ring" cx="28" cy="28" r="23" fill="none" stroke="var(--go)" stroke-width="6" stroke-linecap="round"
+            stroke-dasharray="144.5" stroke-dashoffset="144.5" transform="rotate(-90 28 28)"/>
+        </svg>
+        <div><div class="sub">Pasos de hoy</div><div class="ttl num"><span id="gSteps">0</span> / <span id="gGoal">10000</span></div><div class="sub" id="challengeTxt"></div></div>
+      </div>
+    </div>
+
+    <div class="speed">
+      <h2>Velocidad <span id="uLbl">(mph)</span></h2>
+      <div class="dial">
+        <button id="minus" aria-label="Bajar velocidad">−</button>
+        <div class="val"><div class="big" id="target">1.9</div><div class="real" id="real">real 0.0</div></div>
+        <button id="plus" aria-label="Subir velocidad">+</button>
+      </div>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <div class="autostop">
+      <label for="autoStop">Parar sola al llegar a</label>
+      <select id="autoStop">
+        <option value="">Sin límite</option>
+        <option value="min:30">30 minutos</option>
+        <option value="min:45">45 minutos</option>
+        <option value="min:60">60 minutos</option>
+        <option value="steps:3000">3.000 pasos</option>
+        <option value="steps:5000">5.000 pasos</option>
+        <option value="steps:8000">8.000 pasos</option>
+        <option value="km:2">2 km</option>
+        <option value="km:3">3 km</option>
+        <option value="km:5">5 km</option>
+      </select>
+    </div>
+
+    <div class="actions">
+      <button class="act start" id="btnStart"><span class="c"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></span>Iniciar</button>
+      <button class="act stop" id="btnStop"><span class="c"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg></span>Detener</button>
+      <button class="act set" id="btnFocus"><span class="c"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span>Grande</button>
+      <button class="act set" id="btnSet"><span class="c"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.700 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></span>Ajustes</button>
+    </div>
+  </section>
+
+  <!-- RUTAS -->
+  <section class="pane" id="pane-rutas" hidden>
+    <div class="card">
+      <div class="h"><span class="eyebrow">Ruta activa</span><span class="sub num" id="rDone"></span></div>
+      <div class="ttl" id="rName">—</div>
+      <svg class="profile" id="rProfile" viewBox="0 0 340 130" role="img" aria-label="Perfil de altura de la ruta"></svg>
+      <div class="bar"><i id="rBar" style="width:0%"></i></div>
+      <div class="sub" id="rEta"></div>
+      <div class="stops" id="rStops"></div>
+    </div>
+    <div class="eyebrow">Elige ruta · distancias y alturas aproximadas</div>
+    <div class="list" id="routeList"></div>
+  </section>
+
+  <!-- INTERVALOS -->
+  <section class="pane" id="pane-intervalos" hidden>
+    <div class="card">
+      <div class="eyebrow">Tus velocidades (km/h)</div>
+      <div class="twocol">
+        <label for="optSoft">Suave<input id="optSoft" type="number" step="0.1" min="1" max="8"></label>
+        <label for="optFast">Rápida<input id="optFast" type="number" step="0.1" min="1" max="10"></label>
+      </div>
+      <div class="sub">Los programas se arman entre estas dos velocidades. Media = punto intermedio; pico = un poco más que la rápida, sin pasar tu máxima.</div>
+    </div>
+    <div class="list" id="progList"></div>
+  </section>
+
+  <!-- PROGRESO -->
+  <section class="pane" id="pane-progreso" hidden>
+    <div class="kpis">
+      <div class="kpi"><div class="v" id="kStreak">0</div><div class="l">Días seguidos</div></div>
+      <div class="kpi"><div class="v" id="kWeek">0</div><div class="l">km semana</div></div>
+      <div class="kpi"><div class="v" id="kTotal">0</div><div class="l">km totales</div></div>
+    </div>
+    <div class="card">
+      <div class="h"><span class="eyebrow">Pasos · últimos 7 días</span></div>
+      <div class="week" id="week"></div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Reto de hoy</div>
+      <div class="ttl" id="chName">—</div>
+      <div class="bar orange"><i id="chBar" style="width:0%"></i></div>
+      <div class="sub" id="chTxt"></div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Récords</div>
+      <div class="hist" id="records"></div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Sesiones</div>
+      <div class="hist" id="hist"></div>
+    </div>
+  </section>
+
+  <div class="ver" id="ver">v6</div>
 </div>
+
+<div id="focus" hidden>
+  <div>
+    <div class="fu" id="fUnit">mph</div>
+    <div class="fs" id="fSpeed">1.9</div>
+  </div>
+  <div class="fi" id="fProg" hidden><div><div class="sub" id="fpName"></div><span class="lvl" id="fpLvl"></span></div><div class="cd" id="fpCd">0:00</div></div>
+  <div class="fi" id="fRoute"><div style="min-width:0"><div class="sub">Próxima parada</div><div class="ttl" id="frNext">—</div></div><div class="cd" id="frLeft" style="font-size:28px">—</div></div>
+  <div class="fg">
+    <div><div class="v" id="fTime">00:00</div><div class="l">Tiempo</div></div>
+    <div><div class="v" id="fSteps">0</div><div class="l">Pasos</div></div>
+    <div><div class="v" id="fDist">0.00</div><div class="l" id="fDistU">mi</div></div>
+  </div>
+  <div class="fbtns"><button id="fMinus" aria-label="Bajar">−</button><button id="fClose" style="font-size:16px;font-weight:600">Salir</button><button id="fPlus" aria-label="Subir">+</button></div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
 
 <dialog id="dlg">
   <h3>Ajustes</h3>
   <div class="field"><label for="optUnit">Unidad</label><select id="optUnit"><option value="mph">mph / millas</option><option value="kmh">km/h / km</option></select></div>
-  <div class="field"><label for="optGoal">Meta de pasos</label><input id="optGoal" type="number" min="500" step="500"></div>
+  <div class="field"><label for="optGoal">Meta diaria de pasos</label><input id="optGoal" type="number" min="500" step="500"></div>
   <div class="field"><label for="optWeight">Tu peso (kg)</label><input id="optWeight" type="number" min="35" max="200"></div>
   <div class="field"><label for="optMax">Velocidad máx. (km/h)</label><input id="optMax" type="number" min="3" max="20" step="0.5"></div>
   <div class="field"><label for="optStride">Zancada (m)</label><input id="optStride" type="number" min="0.4" max="1.2" step="0.01"></div>
+  <div class="field"><label for="optCal">Calibración distancia (%)</label><input id="optCal" type="number" min="80" max="120" step="1"></div>
+  <div class="field"><label for="optVoice">Voz y pitidos</label><select id="optVoice"><option value="1">Activados</option><option value="0">Apagados</option></select></div>
   <div class="field"><span>Protocolo</span><span id="proto" style="color:var(--muted)">—</span></div>
   <div class="log" id="log"></div>
   <div class="row"><button class="btn" id="btnReset">Reiniciar sesión</button><button class="btn primary" id="btnClose">Listo</button></div>
@@ -149,31 +338,118 @@ dialog h3{margin:0 0 12px;font-family:var(--display);font-size:22px;letter-spaci
 const $ = id => document.getElementById(id);
 const KMH_PER_MPH = 1.609344;
 
-/* ---------- ajustes (localStorage, tolerante a fallos) ---------- */
-const defaults = {unit:'mph', goal:10000, weight:75, maxKmh:6, stride:0.65};
-let cfg = {...defaults};
-try { Object.assign(cfg, JSON.parse(localStorage.getItem('wp-cfg') || '{}')); } catch(e){}
-const saveCfg = () => { try { localStorage.setItem('wp-cfg', JSON.stringify(cfg)); } catch(e){} };
+/* ---------- almacenamiento tolerante a fallos ---------- */
+const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch(e){ return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
+
+const defaults = {unit:'mph', goal:10000, weight:75, maxKmh:6, stride:0.65, soft:3.0, fast:5.0, cal:100, voice:1, autoStop:''};
+let cfg = {...defaults, ...load('wp-cfg', {})};
+const saveCfg = () => save('wp-cfg', cfg);
+let sessions = load('wp-sessions', []);        // [{t, dur, dist, steps, kcal, route, prog}]
+let routeState = load('wp-routes', {active:'metro', done:{}, medals:{}});
+
+/* ---------- rutas (distancias por carretera y alturas aproximadas) ---------- */
+const ROUTES = [
+  {id:'nutibara', name:'Cerro Nutibara · Pueblito Paisa', tag:'Corta · se completa en una sesión', stops:[
+    ['Estación Industriales',0,1480],['Avenida Guayabal',0.6,1485],['Base del cerro',1.1,1495],['Mirador sur',1.9,1545],['Pueblito Paisa',2.5,1575]]},
+  {id:'metro', name:'Metro Línea A · La Estrella → Niquía', tag:'Urbana · todo el valle de sur a norte', stops:[
+    ['La Estrella',0,1560],['Sabaneta',2.0,1550],['Itagüí',4.4,1540],['Envigado',6.4,1530],['Ayurá',7.6,1525],['Aguacatala',9.3,1515],
+    ['Poblado',10.9,1505],['Industriales',12.5,1495],['Exposiciones',13.4,1492],['San Antonio',14.6,1490],['Parque Berrío',15.2,1488],
+    ['Prado',16.3,1485],['Hospital',17.0,1482],['Universidad',18.2,1478],['Caribe',19.5,1470],['Tricentenario',20.4,1465],
+    ['Acevedo',21.4,1460],['Madera',22.5,1455],['Bello',23.5,1450],['Niquía',25.8,1440]]},
+  {id:'arvi', name:'Medellín → Parque Arví', tag:'Subida · por Santa Elena', stops:[
+    ['Parque Berrío',0,1495],['Buenos Aires',3,1600],['Mirador Las Palmas',8,2050],['Media Luna',10,2200],['Santa Elena',14,2500],['Parque Arví',17,2450]]},
+  {id:'santafe', name:'Medellín → Santa Fe de Antioquia', tag:'Bajada al calor · por el Túnel de Occidente', stops:[
+    ['Medellín',0,1495],['San Cristóbal',9,1800],['Túnel de Occidente',19,1950],['Salida del túnel',24,1550],['San Jerónimo',38,780],['Santa Fe de Antioquia',58,550]]},
+  {id:'guatape', name:'Medellín → Guatapé', tag:'Oriente · hasta la Piedra', stops:[
+    ['Medellín',0,1495],['Alto de Guarne',18,2350],['Guarne',25,2150],['Marinilla',45,2120],['El Peñol',68,1900],['Piedra del Peñol',76,2135],['Guatapé',79,1925]]},
+  {id:'cartagena', name:'Medellín → Cartagena', tag:'Épica · para semanas de caminata', stops:[
+    ['Medellín',0,1495],['Don Matías',45,2200],['Yarumal',120,2265],['Valdivia',170,1165],['Caucasia',280,50],['Planeta Rica',350,90],
+    ['Sincelejo',470,200],['El Carmen de Bolívar',530,150],['Cartagena',640,2]]}
+];
+const routeById = id => ROUTES.find(r => r.id===id) || ROUTES[1];
+const routeLen = r => r.stops[r.stops.length-1][1];
+
+/* ---------- programas de intervalos: [segundos, nivel] ----------
+   niveles: W calentar · S suave · M media · F rápida · P pico · C enfriar */
+const rep = (n, arr) => Array.from({length:n}, () => arr).flat();
+const PROGRAMS = [
+  {id:'iwt', name:'Caminata japonesa', desc:'5 rondas de 3 min rápido y 3 min suave. El clásico con más evidencia.', segs:[...rep(5,[[180,'F'],[180,'S']])]},
+  {id:'hora', name:'La hora completa', desc:'5 min calentar, 10 rondas de 3 rápido / 2 suave, 5 min enfriar. Justo 60 min.', segs:[[300,'W'],...rep(10,[[180,'F'],[120,'S']]),[300,'C']]},
+  {id:'piramide', name:'Pirámide', desc:'Sube cada 3 min hasta el pico y baja igual. 39 min.', segs:[[180,'W'],[180,'S'],[180,'M'],[180,'F'],[180,'P'],[180,'F'],[180,'M'],[180,'S'],[180,'P'],[180,'F'],[180,'M'],[180,'S'],[180,'C']]},
+  {id:'sprints', name:'Sprints 30/30', desc:'3 min calentar, 14 rondas de 30 s pico / 30 s suave, 3 min enfriar. 20 min.', segs:[[180,'W'],...rep(14,[[30,'P'],[30,'S']]),[180,'C']]},
+  {id:'subida', name:'Subida a Santa Elena', desc:'Ritmo que sube cada 4 min como si fuera la loma, y bajada al final. 36 min.', segs:[[240,'W'],[240,'S'],[240,'M'],[240,'M'],[240,'F'],[240,'F'],[240,'P'],[240,'M'],[240,'C']]},
+  {id:'escritorio', name:'Modo escritorio', desc:'Paso suave y constante para trabajar. Aviso de pausa a los 50 min.', segs:[[3000,'D']]}
+];
+const LVL = {W:'Calentar',S:'Suave',M:'Media',F:'Rápida',P:'Pico',C:'Enfriar',D:'Escritorio'};
+function lvlKmh(l){
+  const s=cfg.soft, f=cfg.fast;
+  const k = {W:s-0.5, S:s, M:(s+f)/2, F:f, P:f+0.5, C:s-0.5, D:Math.max(1.5, s-0.8)}[l];
+  return Math.max(st.minKmh, Math.min(cfg.maxKmh, Math.round(k*10)/10));
+}
 
 /* ---------- estado ---------- */
 const st = {
-  mode:'none',            // none | ftms | ks | demo
-  running:false,
-  targetKmh:3.0,          // ~1.9 mph
-  actualKmh:0,
+  mode:'none', running:false, targetKmh:3.0, actualKmh:0,
   elapsed:0, distM:0, steps:0, kcal:0,
-  dev:{time:null, dist:null, steps:null, kcal:null}, // valores reportados por la máquina
-  minKmh:0.5
+  dev:{time:null, dist:null, steps:null, kcal:null},
+  base:{time:0, dist:0, steps:0, kcal:0},
+  minKmh:0.5, lastDist:null, sessionStart:null, prog:null
 };
 
-/* ---------- log ---------- */
 const log = m => { const el=$('log'); el.textContent = (new Date().toLocaleTimeString()+'  '+m+'\n'+el.textContent).slice(0,4000); };
 
-/* ---------- UI ---------- */
+/* ---------- unidades y formato ---------- */
 const toUnit = kmh => cfg.unit==='mph' ? kmh/KMH_PER_MPH : kmh;
 const fromUnit = v => cfg.unit==='mph' ? v*KMH_PER_MPH : v;
-function fmtTime(s){ s=Math.floor(s); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60;
+const distU = m => cfg.unit==='mph' ? m/1609.344 : m/1000;
+const dU = () => cfg.unit==='mph' ? 'mi' : 'km';
+const fmtN = n => Math.round(n).toLocaleString('es-CO');
+function fmtTime(s){ s=Math.max(0,Math.floor(s)); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60;
   return h ? `${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`; }
+const fmtCd = s => `${Math.floor(s/60)}:${String(Math.max(0,s%60)).padStart(2,'0')}`;
+const fmtKm = km => km < 10 ? km.toFixed(2) : km.toFixed(1);
+const dayKey = t => { const d=new Date(t); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
+
+/* ---------- métricas de la sesión ---------- */
+const raw = () => ({
+  time: st.dev.time ?? st.elapsed,
+  dist: (st.dev.dist ?? st.distM) * cfg.cal/100,
+  steps: st.dev.steps ?? st.steps,
+  kcal: st.dev.kcal ?? st.kcal
+});
+function sess(){
+  const r = raw(), b = st.base;
+  return { time: Math.max(0, r.time-b.time), dist: Math.max(0, r.dist-b.dist), steps: Math.max(0, r.steps-b.steps), kcal: Math.max(0, r.kcal-b.kcal) };
+}
+function resetBase(){ st.base = raw(); st.lastDist = st.base.dist; }
+
+/* ---------- voz, pitidos, vibración ---------- */
+let actx=null;
+function beep(freq=880, dur=0.12, n=1){
+  if (!+cfg.voice) return;
+  try { actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    for (let i=0;i<n;i++){ const o=actx.createOscillator(), g=actx.createGain(); o.frequency.value=freq; o.connect(g); g.connect(actx.destination);
+      const t=actx.currentTime+i*(dur+0.08); g.gain.setValueAtTime(0.25,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur); o.start(t); o.stop(t+dur); }
+  } catch(e){}
+}
+function say(txt){
+  toast(txt);
+  try { navigator.vibrate?.(200); } catch(e){}
+  if (!+cfg.voice) return;
+  try { const u = new SpeechSynthesisUtterance(txt); u.lang='es-CO'; u.rate=1.05; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch(e){}
+}
+let toastT=null;
+function toast(t){ const el=$('toast'); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 4000); }
+
+/* ---------- pestañas ---------- */
+let tab = load('wp-tab','control');
+function showTab(t){ tab=t; save('wp-tab',t);
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===t));
+  ['control','rutas','intervalos','progreso'].forEach(p => $('pane-'+p).hidden = p!==t);
+  if (t==='rutas') renderRoutes(); if (t==='progreso') renderProgress(); if (t==='intervalos') renderPrograms();
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 
 function setStatus(s, txt){ $('status').dataset.s=s; $('statusTxt').textContent=txt; }
 
@@ -181,45 +457,282 @@ function renderPresets(){
   const vals = cfg.unit==='mph' ? [1,2,3,4] : [2,3,4,5];
   const p=$('presets'); p.innerHTML='';
   vals.forEach(v => { const b=document.createElement('button'); b.textContent=v; b.dataset.v=v;
-    b.setAttribute('aria-pressed', Math.abs(toUnit(st.targetKmh)-v)<0.05);
     b.onclick=()=>setTarget(fromUnit(v)); p.appendChild(b); });
 }
 
+/* ---------- hoy / retos ---------- */
+function todayTotals(){
+  const k = dayKey(Date.now()); const s = sess();
+  const t = sessions.filter(x => dayKey(x.t)===k).reduce((a,x)=>({steps:a.steps+x.steps, dist:a.dist+x.dist, dur:a.dur+x.dur, progs:a.progs.concat(x.prog?[x.prog]:[])}), {steps:0,dist:0,dur:0,progs:[]});
+  const live = st.sessionStart ? s : {steps:0,dist:0,time:0};
+  return {steps:t.steps+live.steps, dist:t.dist+live.dist, dur:t.dur+live.time, progs: st.prog ? t.progs.concat([st.prog.id]) : t.progs};
+}
+const CHALLENGES = [
+  {name:'Llega a 6.000 pasos', type:'steps', val:6000},
+  {name:'Camina 4 km hoy', type:'km', val:4},
+  {name:'45 minutos en movimiento', type:'min', val:45},
+  {name:'Completa una caminata japonesa', type:'prog', val:'iwt'},
+  {name:'Llega a 8.000 pasos', type:'steps', val:8000},
+  {name:'Camina 5 km hoy', type:'km', val:5},
+  {name:'Haz la pirámide completa', type:'prog', val:'piramide'}
+];
+function challenge(){
+  const d = new Date(); const seed = d.getFullYear()*400 + d.getMonth()*31 + d.getDate();
+  const c = CHALLENGES[seed % CHALLENGES.length]; const t = todayTotals(); let pct=0, txt='';
+  if (c.type==='steps'){ pct=t.steps/c.val; txt=`${fmtN(t.steps)} de ${fmtN(c.val)} pasos`; }
+  if (c.type==='km'){ pct=t.dist/1000/c.val; txt=`${(t.dist/1000).toFixed(2)} de ${c.val} km`; }
+  if (c.type==='min'){ pct=t.dur/60/c.val; txt=`${Math.floor(t.dur/60)} de ${c.val} min`; }
+  if (c.type==='prog'){ const done = sessions.some(x=>dayKey(x.t)===dayKey(Date.now()) && x.prog===c.val && x.progDone); pct=done?1:0; txt=done?'Completado':'Pendiente: búscalo en Intervalos'; }
+  return {...c, pct:Math.min(1,pct), txt};
+}
+
+/* ---------- render principal ---------- */
 function render(){
-  const dist = st.dev.dist ?? st.distM;
-  const steps = Math.round(st.dev.steps ?? st.steps);
-  $('sTime').textContent = fmtTime(st.dev.time ?? st.elapsed);
-  $('sDist').textContent = (cfg.unit==='mph' ? dist/1609.344 : dist/1000).toFixed(2);
-  $('sDistU').textContent = cfg.unit==='mph' ? 'mi' : 'km';
-  $('sSteps').textContent = steps.toLocaleString('es-CO');
-  $('sKcal').textContent = Math.round(st.dev.kcal ?? st.kcal);
+  const s = sess();
+  $('sTime').textContent = fmtTime(s.time);
+  $('sDist').textContent = distU(s.dist).toFixed(2);
+  $('sDistU').textContent = dU();
+  $('sSteps').textContent = fmtN(s.steps);
+  $('sKcal').textContent = Math.round(s.kcal);
   $('uLbl').textContent = cfg.unit==='mph' ? '(mph)' : '(km/h)';
   $('target').textContent = toUnit(st.targetKmh).toFixed(1);
   $('real').textContent = 'real ' + toUnit(st.actualKmh).toFixed(1);
-  $('gSteps').textContent = steps.toLocaleString('es-CO');
-  $('gGoal').textContent = Number(cfg.goal).toLocaleString('es-CO');
-  const pct = Math.min(1, steps/cfg.goal); $('ring').style.strokeDashoffset = 144.5*(1-pct);
+  const t = todayTotals();
+  $('gSteps').textContent = fmtN(t.steps);
+  $('gGoal').textContent = fmtN(cfg.goal);
+  $('ring').style.strokeDashoffset = 144.5*(1-Math.min(1, t.steps/cfg.goal));
+  const ch = challenge(); $('challengeTxt').textContent = `Reto: ${ch.name}${ch.pct>=1?' ✓':''}`;
   const live = st.mode!=='none';
   $('btnStart').disabled = !live || st.running;
   $('btnStop').disabled = !live || !st.running;
   $('btnConnect').hidden = live; $('btnDemo').hidden = live; $('btnScanAll').hidden = live; $('btnDisconnect').hidden = !live;
   document.querySelectorAll('#presets button').forEach(b => b.setAttribute('aria-pressed', Math.abs(toUnit(st.targetKmh)-b.dataset.v)<0.05));
   $('proto').textContent = {none:'—', ftms:'FTMS (estándar Bluetooth)', ks:'KingSmith / WalkingPad', demo:'Demo (simulado)'}[st.mode];
+  renderRouteMini(); renderProgCard(); renderFocus();
 }
 
-/* ---------- integración local (pasos, kcal, y respaldo de tiempo/distancia) ---------- */
+/* ---------- ruta: mini y detalle ---------- */
+function routeInfo(){
+  const r = routeById(routeState.active); const len = routeLen(r);
+  const km = Math.min(len, (routeState.done[r.id]||0)/1000);
+  const next = r.stops.find(x => x[1] > km + 1e-6);
+  const prev = [...r.stops].reverse().find(x => x[1] <= km + 1e-6);
+  return {r, len, km, next, prev, pct: km/len};
+}
+function renderRouteMini(){
+  const i = routeInfo();
+  $('rmName').textContent = i.r.name;
+  $('rmPct').textContent = (i.pct*100).toFixed(1)+'%';
+  $('rmBar').style.width = (i.pct*100)+'%';
+  $('rmNext').textContent = i.next ? `Próxima: ${i.next[0]} en ${fmtKm(i.next[1]-i.km)} km · llevas ${fmtKm(i.km)} de ${i.len} km` : `Ruta completada · ${i.len} km`;
+}
+function profileSVG(r, km){
+  const W=340, H=130, pl=34, pr=8, pt=16, pb=22;
+  const len = routeLen(r); const alts = r.stops.map(s=>s[2]);
+  let lo = Math.min(...alts), hi = Math.max(...alts); const pad = Math.max(40,(hi-lo)*0.15); lo=Math.max(0,lo-pad); hi=hi+pad;
+  const X = k => pl + (k/len)*(W-pl-pr), Y = a => pt + (1-(a-lo)/(hi-lo))*(H-pt-pb);
+  const alt = k => { for (let i=1;i<r.stops.length;i++){ const [,k1,a1]=r.stops[i-1], [,k2,a2]=r.stops[i]; if (k<=k2){ const f=(k-k1)/((k2-k1)||1); return a1+(a2-a1)*(0.5-0.5*Math.cos(Math.PI*f)); } } return r.stops.at(-1)[2]; };
+  const N=120, pts=[]; for (let j=0;j<=N;j++){ const k=len*j/N; pts.push([X(k),Y(alt(k))]); }
+  const line = pts.map((p,j)=>(j?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area = line+` L${X(len)} ${H-pb} L${X(0)} ${H-pb} Z`;
+  const kc = Math.min(km,len); const donePts = pts.filter(p => p[0] <= X(kc)+0.01); donePts.push([X(kc),Y(alt(kc))]);
+  const doneLine = donePts.map((p,j)=>(j?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const ticks = [lo,(lo+hi)/2,hi].map(a=>`<text x="${pl-4}" y="${Y(a)+3}" text-anchor="end" font-size="9" fill="var(--muted)">${Math.round(a)}</text><line x1="${pl}" x2="${W-pr}" y1="${Y(a)}" y2="${Y(a)}" stroke="var(--line)" stroke-width="0.6"/>`).join('');
+  const stops = r.stops.map(s=>`<circle cx="${X(s[1])}" cy="${Y(s[2])}" r="2.6" fill="${s[1]<=kc?'var(--go)':'var(--panel)'}" stroke="${s[1]<=kc?'var(--go)':'var(--muted)'}" stroke-width="1.2"/>`).join('');
+  return `${ticks}<text x="${pl}" y="${H-6}" font-size="9" fill="var(--muted)">0 km</text><text x="${W-pr}" y="${H-6}" font-size="9" fill="var(--muted)" text-anchor="end">${len} km</text>
+    <text x="${W-pr}" y="${pt-3}" font-size="9" fill="var(--muted)" text-anchor="end">altura (m.s.n.m.)</text>
+    <path d="${area}" fill="var(--sky)" fill-opacity="0.12"/><path d="${line}" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+    <path d="${doneLine}" fill="none" stroke="var(--go)" stroke-width="2.6" stroke-linecap="round"/>${stops}
+    <circle cx="${X(kc)}" cy="${Y(alt(kc))}" r="5.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="2"/>`;
+}
+function weeklyKmPerDay(){
+  const since = Date.now()-7*864e5; const km = sessions.filter(s=>s.t>since).reduce((a,s)=>a+s.dist,0)/1000;
+  return km/7;
+}
+function renderRoutes(){
+  const i = routeInfo();
+  $('rName').textContent = i.r.name;
+  $('rDone').textContent = `${fmtKm(i.km)} / ${i.len} km`;
+  $('rProfile').innerHTML = profileSVG(i.r, i.km);
+  $('rBar').style.width = (i.pct*100)+'%';
+  const perDay = weeklyKmPerDay(); const left = i.len - i.km;
+  $('rEta').textContent = left<=0 ? 'Ruta completada. Elige otra abajo.' :
+    perDay>0.05 ? `Faltan ${fmtKm(left)} km. A tu ritmo de esta semana (${perDay.toFixed(1)} km/día) llegas en unos ${Math.ceil(left/perDay)} días.` :
+    `Faltan ${fmtKm(left)} km. Camina unos días y te calculo cuándo llegas.`;
+  $('rStops').innerHTML = i.r.stops.map(s => {
+    const cls = s[1] <= i.km+1e-6 ? 'done' : (i.next && s[0]===i.next[0] ? 'next' : '');
+    return `<div class="stop ${cls}"><span class="pt"></span><span>${s[0]} <span class="alt">${s[2]} m</span></span><span class="num">${s[1]} km</span></div>`;
+  }).join('');
+  $('routeList').innerHTML = '';
+  ROUTES.forEach(r => {
+    const b=document.createElement('button'); b.className='item'; b.setAttribute('aria-pressed', r.id===routeState.active);
+    const km=(routeState.done[r.id]||0)/1000, len=routeLen(r), medal = routeState.medals[r.id];
+    b.innerHTML = `<div class="grow"><div class="ttl" style="font-size:17px">${r.name}${medal?'<span class="medal">Completada ×'+medal+'</span>':''}</div>
+      <div class="sub">${r.tag}${km>0&&km<len?` · llevas ${fmtKm(km)} km`:''}</div></div><div class="kms">${len} km</div>`;
+    b.onclick = () => { routeState.active=r.id; save('wp-routes',routeState); renderRoutes(); render(); toast('Ruta activa: '+r.name); };
+    $('routeList').appendChild(b);
+  });
+}
+function advanceRoute(dm){
+  if (!(dm>0 && dm<60)) return;
+  const i0 = routeInfo(); if (i0.km >= i0.len) return;
+  routeState.done[i0.r.id] = (routeState.done[i0.r.id]||0) + dm;
+  const i1 = routeInfo();
+  const passed = i0.r.stops.filter(s => s[1] > i0.km && s[1] <= i1.km);
+  passed.forEach(s => {
+    if (s[1] >= i1.len){ routeState.medals[i1.r.id] = (routeState.medals[i1.r.id]||0)+1; beep(660,.15,3); say(`¡Llegaste a ${s[0]}! Completaste ${i1.r.name}.`); }
+    else { beep(990,.1,2); say(`Llegaste a ${s[0]}. Kilómetro ${s[1]}. Sigue: ${i1.next?i1.next[0]:''}.`); }
+  });
+  // anuncia al cruzar cada km entero de la ruta
+  if (!passed.length && Math.floor(i1.km) > Math.floor(i0.km) && i1.next) say(`Kilómetro ${Math.floor(i1.km)}. ${fmtKm(i1.next[1]-i1.km)} kilómetros para ${i1.next[0]}.`);
+  save('wp-routes', routeState);
+}
+
+/* ---------- programas ---------- */
+function renderPrograms(){
+  $('optSoft').value = cfg.soft; $('optFast').value = cfg.fast;
+  const L=$('progList'); L.innerHTML='';
+  PROGRAMS.forEach(p => {
+    const total = p.segs.reduce((a,s)=>a+s[0],0);
+    const c=document.createElement('div'); c.className='card';
+    const maxK = Math.max(...p.segs.map(s=>lvlKmh(s[1])));
+    c.innerHTML = `<div class="h"><span class="ttl">${p.name}</span><span class="sub num">${Math.round(total/60)} min</span></div>
+      <div class="sub">${p.desc}</div>
+      <div class="segs">${p.segs.map(s=>`<i style="flex:${s[0]};height:${Math.max(18,lvlKmh(s[1])/maxK*100)}%"></i>`).join('')}</div>
+      <div class="row" style="margin-top:2px"><span class="sub" style="flex:1;align-self:center">${[...new Set(p.segs.map(s=>s[1]))].map(l=>`${LVL[l]} ${toUnit(lvlKmh(l)).toFixed(1)}`).join(' · ')} ${cfg.unit==='mph'?'mph':'km/h'}</span><button class="btn go sm">Empezar</button></div>`;
+    c.querySelector('button').onclick = () => startProgram(p);
+    L.appendChild(c);
+  });
+}
+['optSoft','optFast'].forEach(id => $(id).onchange = () => {
+  cfg.soft = Math.max(1, +$('optSoft').value || 3); cfg.fast = Math.max(cfg.soft+0.2, +$('optFast').value || 5);
+  saveCfg(); renderPrograms();
+});
+function startProgram(p){
+  if (st.mode==='none'){ toast('Primero conecta la caminadora (o usa el modo demo).'); return; }
+  st.prog = {id:p.id, name:p.name, segs:p.segs, idx:0, left:p.segs[0][0], done:false};
+  setTarget(lvlKmh(p.segs[0][1]));
+  if (!st.running) startBelt();
+  showTab('control');
+  beep(880,.12,2); say(`${p.name}. ${LVL[p.segs[0][1]]} por ${Math.round(p.segs[0][0]/60)||p.segs[0][0]} ${p.segs[0][0]>=60?'minutos':'segundos'}.`);
+  render();
+}
+function progTick(){
+  const P = st.prog; if (!P || !st.running) return;
+  P.left--;
+  if (P.left===3 || P.left===2 || P.left===1) beep(P.left===1?1320:880, .08);
+  if (P.id==='escritorio' && P.left===600) say('Diez minutos para tu pausa activa.');
+  if (P.left > 0) return;
+  P.idx++;
+  if (P.idx >= P.segs.length){
+    P.done = true; st.lastProg = {id:P.id, done:true}; st.prog = null;
+    setTarget(cfg.soft); beep(660,.15,3);
+    say(P.id==='escritorio' ? 'Llevas 50 minutos. Haz una pausa, estira y toma agua.' : `¡Programa ${P.name} completado! Sigues en paso suave.`);
+    return;
+  }
+  const [sec, l] = P.segs[P.idx]; P.left = sec; setTarget(lvlKmh(l));
+  const nx = P.segs[P.idx+1];
+  say(`${LVL[l]}. ${toUnit(lvlKmh(l)).toFixed(1)}. ${sec>=60?Math.round(sec/60)+' minutos':sec+' segundos'}.`);
+}
+function renderProgCard(){
+  const P = st.prog; $('progCard').hidden = !P; if (!P) return;
+  const [sec, l] = P.segs[P.idx]; const nx = P.segs[P.idx+1];
+  const remain = P.left + P.segs.slice(P.idx+1).reduce((a,s)=>a+s[0],0);
+  $('pcName').textContent = P.name + ` · bloque ${P.idx+1}/${P.segs.length}`;
+  $('pcLeft').textContent = 'Quedan ' + fmtTime(remain);
+  $('pcLvl').textContent = `${LVL[l]} ${toUnit(lvlKmh(l)).toFixed(1)}`; $('pcLvl').className = 'lvl '+l;
+  $('pcNext').textContent = nx ? `luego ${LVL[nx[1]].toLowerCase()}` : 'último bloque';
+  $('pcCd').textContent = fmtCd(P.left);
+  const maxK = Math.max(...P.segs.map(s=>lvlKmh(s[1])));
+  if ($('pcSegs').dataset.k !== P.id+P.idx){
+    $('pcSegs').dataset.k = P.id+P.idx;
+    $('pcSegs').innerHTML = P.segs.map((s,j)=>`<i class="${j<P.idx?'done':j===P.idx?'on':''}" style="flex:${s[0]};height:${Math.max(18,lvlKmh(s[1])/maxK*100)}%"></i>`).join('');
+  }
+}
+$('pcSkip').onclick = () => { if (st.prog){ st.prog.left = 1; progTick(); render(); } };
+$('pcEnd').onclick = () => { if (st.prog){ st.prog = null; setTarget(cfg.soft); toast('Programa terminado. Sigues en paso suave.'); render(); } };
+
+/* ---------- progreso ---------- */
+function streak(){
+  const days = new Set(sessions.map(s=>dayKey(s.t))); if (st.sessionStart && sess().dist>50) days.add(dayKey(Date.now()));
+  let n=0, d=new Date(); if (!days.has(dayKey(d))) d.setDate(d.getDate()-1);
+  while (days.has(dayKey(d))){ n++; d.setDate(d.getDate()-1); }
+  return n;
+}
+function renderProgress(){
+  const since = Date.now()-7*864e5;
+  const wk = sessions.filter(s=>s.t>since).reduce((a,s)=>a+s.dist,0) + (st.sessionStart?sess().dist:0);
+  const tot = sessions.reduce((a,s)=>a+s.dist,0) + (st.sessionStart?sess().dist:0);
+  $('kStreak').textContent = streak();
+  $('kWeek').textContent = distU(wk).toFixed(1); $('kTotal').textContent = distU(tot).toFixed(1);
+  $('kWeek').nextElementSibling.textContent = dU()+' semana'; $('kTotal').nextElementSibling.textContent = dU()+' totales';
+  const days=[]; for (let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d); }
+  const per = days.map(d => { const k=dayKey(d); let s=sessions.filter(x=>dayKey(x.t)===k).reduce((a,x)=>a+x.steps,0); if (i0(d)) s += st.sessionStart?sess().steps:0; return s; });
+  function i0(d){ return dayKey(d)===dayKey(Date.now()); }
+  const mx = Math.max(cfg.goal, ...per);
+  $('week').innerHTML = days.map((d,j)=>`<div class="col ${i0(d)?'today':''}"><span class="n">${per[j]?(per[j]>=1000?(per[j]/1000).toFixed(1)+'k':per[j]):''}</span><div class="b" style="height:${per[j]/mx*80}%"></div><span class="d">${'DLMMJVS'[d.getDay()]}</span></div>`).join('');
+  const ch = challenge(); $('chName').textContent = ch.name; $('chBar').style.width=(ch.pct*100)+'%'; $('chTxt').textContent = ch.txt;
+  if (!sessions.length){ $('records').innerHTML = '<div class="empty">Tus récords aparecen al guardar tu primera sesión.</div>'; $('hist').innerHTML = '<div class="empty">Cada vez que detienes la banda la sesión se guarda aquí.</div>'; return; }
+  const best = (f) => sessions.reduce((a,s)=>f(s)>f(a)?s:a, sessions[0]);
+  const byDay = {}; sessions.forEach(s=>{ const k=dayKey(s.t); byDay[k]=(byDay[k]||0)+s.steps; });
+  const bestDay = Object.entries(byDay).sort((a,b)=>b[1]-a[1])[0];
+  const fd = t => new Date(t).toLocaleDateString('es-CO',{day:'numeric',month:'short'});
+  $('records').innerHTML = `
+    <div class="r"><span>Más pasos en un día</span><span></span><span></span><span>${fmtN(bestDay[1])}</span></div>
+    <div class="r"><span>Sesión más larga</span><span></span><span>${fd(best(s=>s.dur).t)}</span><span>${fmtTime(best(s=>s.dur).dur)}</span></div>
+    <div class="r"><span>Mayor distancia</span><span></span><span>${fd(best(s=>s.dist).t)}</span><span>${distU(best(s=>s.dist).dist).toFixed(2)} ${dU()}</span></div>`;
+  $('hist').innerHTML = sessions.slice(-15).reverse().map(s => `<div class="r"><span>${new Date(s.t).toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})} ${new Date(s.t).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})}</span><span>${fmtTime(s.dur)}</span><span>${distU(s.dist).toFixed(2)} ${dU()}</span><span>${fmtN(s.steps)} p</span></div>`).join('');
+}
+
+/* ---------- pantalla grande ---------- */
+function renderFocus(){
+  if ($('focus').hidden) return;
+  const s = sess(), i = routeInfo(), P = st.prog;
+  $('fSpeed').textContent = toUnit(st.running ? (st.actualKmh || st.targetKmh) : st.targetKmh).toFixed(1);
+  $('fUnit').textContent = (cfg.unit==='mph'?'mph':'km/h') + ' · objetivo ' + toUnit(st.targetKmh).toFixed(1);
+  $('fTime').textContent = fmtTime(s.time); $('fSteps').textContent = fmtN(s.steps);
+  $('fDist').textContent = distU(s.dist).toFixed(2); $('fDistU').textContent = dU();
+  $('fProg').hidden = !P;
+  if (P){ const l=P.segs[P.idx][1]; $('fpName').textContent=P.name; $('fpLvl').textContent=LVL[l]; $('fpLvl').className='lvl '+l; $('fpCd').textContent=fmtCd(P.left); }
+  $('frNext').textContent = i.next ? i.next[0] : 'Ruta completada';
+  $('frLeft').textContent = i.next ? fmtKm(i.next[1]-i.km)+' km' : '';
+}
+$('btnFocus').onclick = async () => { $('focus').hidden=false; renderFocus(); try { await document.documentElement.requestFullscreen?.(); } catch(e){} keepAwake(); };
+$('fClose').onclick = () => { $('focus').hidden=true; try { document.fullscreenElement && document.exitFullscreen(); } catch(e){} };
+
+/* ---------- reloj principal: integra, avanza ruta, programa, metas ---------- */
 setInterval(() => {
   if (!st.running) return;
   const v = st.actualKmh || (st.mode==='demo' ? st.targetKmh : 0);
   const ms = v/3.6;
   st.elapsed += 1;
   st.distM += ms;
-  const stride = cfg.stride * (0.85 + 0.05*v);   // la zancada crece con la velocidad
+  const stride = cfg.stride * (0.85 + 0.05*v);
   if (ms>0) st.steps += ms/stride;
-  const vo2 = 3.5 + 0.1*(ms*60);                 // ACSM caminata, ml/kg/min
+  const vo2 = 3.5 + 0.1*(ms*60);
   st.kcal += vo2*cfg.weight/1000*5/60;
+
+  const d = raw().dist;
+  if (st.lastDist == null || d < st.lastDist - 5) { // la máquina reinició su contador
+    if (st.lastDist != null){ const s = sess(); st.base = {time:raw().time - s.time, dist:d - s.dist, steps:raw().steps - s.steps, kcal:raw().kcal - s.kcal}; }
+    st.lastDist = d;
+  }
+  advanceRoute(d - st.lastDist); st.lastDist = d;
+  progTick();
+  checkAutoStop();
   render();
+  if (tab==='rutas' && st.elapsed % 5 === 0) renderRoutes();
+  if (tab==='progreso' && st.elapsed % 10 === 0) renderProgress();
 }, 1000);
+
+function checkAutoStop(){
+  if (!cfg.autoStop) return;
+  const [type, val] = cfg.autoStop.split(':'); const s = sess(); const n = +val;
+  const hit = (type==='min' && s.time >= n*60) || (type==='steps' && s.steps >= n) || (type==='km' && s.dist >= n*1000);
+  if (hit){ beep(660,.15,3); say(`Meta cumplida: ${type==='min'?n+' minutos':type==='steps'?fmtN(n)+' pasos':n+' kilómetros'}. Detengo la banda.`); stopBelt(); }
+}
+$('autoStop').value = cfg.autoStop || '';
+$('autoStop').onchange = () => { cfg.autoStop = $('autoStop').value; saveCfg(); };
 
 /* ---------- velocidad ---------- */
 let speedTimer=null;
@@ -230,10 +743,10 @@ function setTarget(kmh){
   speedTimer = setTimeout(() => { if (st.running) driver?.setSpeed(st.targetKmh); }, 250);
 }
 const stepKmh = () => cfg.unit==='mph' ? 0.1*KMH_PER_MPH : 0.1;
-$('minus').onclick = () => setTarget(st.targetKmh - stepKmh());
-$('plus').onclick  = () => setTarget(st.targetKmh + stepKmh());
+$('minus').onclick = $('fMinus').onclick = () => setTarget(st.targetKmh - stepKmh());
+$('plus').onclick  = $('fPlus').onclick  = () => setTarget(st.targetKmh + stepKmh());
 
-/* ---------- cola GATT (evita "operation already in progress") ---------- */
+/* ---------- cola GATT ---------- */
 let q = Promise.resolve();
 const enqueue = fn => (q = q.then(fn).catch(e => log('Error: '+e.message)));
 
@@ -243,13 +756,13 @@ function ftmsDriver(svc, cp, data){
   data.addEventListener('characteristicvaluechanged', e => {
     const d=e.target.value; let o=0; const f=d.getUint16(o,true); o+=2;
     if (!(f & 1)) { st.actualKmh = d.getUint16(o,true)/100; o+=2; }
-    if (f & 2) o+=2;                                                    // vel. promedio
+    if (f & 2) o+=2;
     if (f & 4) { st.dev.dist = d.getUint16(o,true) | (d.getUint8(o+2)<<16); o+=3; }
-    if (f & 8) o+=4;                                                    // inclinación
-    if (f & 16) o+=4;                                                   // elevación
-    if (f & 32) o+=1; if (f & 64) o+=1;                                 // ritmo
+    if (f & 8) o+=4;
+    if (f & 16) o+=4;
+    if (f & 32) o+=1; if (f & 64) o+=1;
     if (f & 128) { const k=d.getUint16(o,true); if (k!==0xFFFF && k>0) st.dev.kcal=k; o+=5; }
-    if (f & 256) o+=1; if (f & 512) o+=1;                               // FC, MET
+    if (f & 256) o+=1; if (f & 512) o+=1;
     if (f & 1024) { st.dev.time = d.getUint16(o,true); o+=2; }
     st.running = st.actualKmh > 0.05 || st.running;
     render();
@@ -263,7 +776,7 @@ function ftmsDriver(svc, cp, data){
       try { const r = await svc.getCharacteristic(U(0x2AD4)); const v = await r.readValue();
         st.minKmh = v.getUint16(0,true)/100 || 0.5; const mx = v.getUint16(2,true)/100; if (mx) cfg.maxKmh = Math.min(cfg.maxKmh, mx);
         log(`Rango: ${st.minKmh}–${mx} km/h`); } catch(e){ log('Sin rango de velocidad'); }
-      await write([0x00]);                                              // Request Control
+      await write([0x00]);
     },
     start(){ write([0x07]); this.setSpeed(st.targetKmh); },
     stop(){ write([0x08, 0x01]); },
@@ -309,7 +822,6 @@ function showNote(html){ const n=$('btNote'); n.innerHTML=html; n.hidden=false; 
 function btHelp(reason){
   showNote(`<b>${reason}</b><br>Para controlar la caminadora abre esta página alojada fuera de Claude: en <b>iPhone</b> con el navegador <b>Bluefy</b> (Safari no tiene Bluetooth web), o en <b>Chrome</b> en Android, Mac o Windows. Mientras tanto puedes usar el modo demo.`);
 }
-
 const U = n => '0000'+n.toString(16).padStart(4,'0')+'-0000-1000-8000-00805f9b34fb';
 const OPT_SERVICES = [0x1826,0xFE00,0xFFF0,0xFFE0,0x180A,0x1814,0x1816].map(U);
 async function listServices(gatt){
@@ -357,33 +869,54 @@ async function connect(all){
   }
   render();
 }
-function onDisconnect(){ driver?.dispose?.(); driver=null; st.mode='none'; st.running=false; st.actualKmh=0; setStatus('off','Desconectada'); log('Desconectado'); render(); }
-
+function onDisconnect(){
+  if (st.running || st.sessionStart) endSession();
+  driver?.dispose?.(); driver=null; st.mode='none'; st.running=false; st.actualKmh=0; st.prog=null;
+  setStatus('off','Desconectada'); log('Desconectado'); render();
+}
 $('btnConnect').onclick = () => connect(false);
 $('btnScanAll').onclick = () => connect(true);
-$('btnDemo').onclick = () => { driver=demoDriver(); st.mode='demo'; setStatus('demo','Demo'); render(); };
+$('btnDemo').onclick = () => { $('btNote').hidden=true; driver=demoDriver(); st.mode='demo'; setStatus('demo','Demo'); render(); };
 $('btnDisconnect').onclick = () => { if (device?.gatt?.connected) device.gatt.disconnect(); else onDisconnect(); };
 
-/* ---------- start / stop ---------- */
+/* ---------- sesión ---------- */
+function beginSession(){ if (st.sessionStart) return; st.sessionStart = Date.now(); resetBase(); }
+function endSession(){
+  const s = sess();
+  if (st.sessionStart && (s.dist > 30 || s.time > 60)){
+    sessions.push({t:st.sessionStart, dur:Math.round(s.time), dist:Math.round(s.dist), steps:Math.round(s.steps), kcal:Math.round(s.kcal),
+      route:routeState.active, prog: st.prog?.id || st.lastProg?.id || null, progDone: !!st.lastProg?.done});
+    if (sessions.length > 500) sessions = sessions.slice(-500);
+    save('wp-sessions', sessions);
+    toast(`Sesión guardada: ${fmtN(s.steps)} pasos · ${distU(s.dist).toFixed(2)} ${dU()}`);
+  }
+  st.sessionStart = null; st.lastProg = null;
+  // la siguiente sesión arranca desde cero en pantalla
+  Object.assign(st, {elapsed:0, distM:0, steps:0, kcal:0}); resetBase();
+}
 let wake=null;
 async function keepAwake(){ try { wake = await navigator.wakeLock?.request('screen'); } catch(e){} }
-$('btnStart').onclick = () => { driver?.start(); st.running = true; keepAwake(); render(); };
-$('btnStop').onclick  = () => { driver?.stop(); if (st.mode!=='demo'){ st.running=false; } try{wake?.release();}catch(e){} render(); };
+function startBelt(){ beep(880,.01); beginSession(); driver?.start(); st.running = true; keepAwake(); render(); }
+function stopBelt(){ driver?.stop(); st.running=false; endSession(); st.prog=null; try{wake?.release();}catch(e){} render(); if (tab==='progreso') renderProgress(); }
+$('btnStart').onclick = startBelt;
+$('btnStop').onclick  = stopBelt;
+document.addEventListener('visibilitychange', () => { if (!document.hidden && st.running) keepAwake(); });
 
 /* ---------- ajustes ---------- */
-$('btnSet').onclick = () => { $('optUnit').value=cfg.unit; $('optGoal').value=cfg.goal; $('optWeight').value=cfg.weight; $('optMax').value=cfg.maxKmh; $('optStride').value=cfg.stride; $('dlg').showModal(); };
+$('btnSet').onclick = () => { $('optUnit').value=cfg.unit; $('optGoal').value=cfg.goal; $('optWeight').value=cfg.weight; $('optMax').value=cfg.maxKmh; $('optStride').value=cfg.stride; $('optCal').value=cfg.cal; $('optVoice').value=String(cfg.voice); $('dlg').showModal(); };
 $('btnClose').onclick = () => {
   cfg.unit=$('optUnit').value; cfg.goal=+$('optGoal').value||10000; cfg.weight=+$('optWeight').value||75;
-  cfg.maxKmh=+$('optMax').value||6; cfg.stride=+$('optStride').value||0.65; saveCfg(); renderPresets(); setTarget(st.targetKmh); $('dlg').close();
+  cfg.maxKmh=+$('optMax').value||6; cfg.stride=+$('optStride').value||0.65; cfg.cal=Math.min(120,Math.max(80,+$('optCal').value||100)); cfg.voice=+$('optVoice').value;
+  saveCfg(); renderPresets(); setTarget(st.targetKmh); $('dlg').close(); if (tab!=='control') showTab(tab);
 };
-$('btnReset').onclick = () => { Object.assign(st,{elapsed:0,distM:0,steps:0,kcal:0,dev:{time:null,dist:null,steps:null,kcal:null}}); render(); };
+$('btnReset').onclick = () => { Object.assign(st,{elapsed:0,distM:0,steps:0,kcal:0}); resetBase(); render(); };
 
-// Bluefy y otros navegadores inyectan navigator.bluetooth después de cargar: revisar con retraso
-setTimeout(() => { $('ver').textContent = 'v5 · Bluetooth web: ' + (navigator.bluetooth ? 'sí' : 'no');
+setTimeout(() => { $('ver').textContent = 'v6 · Bluetooth web: ' + (navigator.bluetooth ? 'sí' : 'no');
   if (!navigator.bluetooth) btHelp('Este navegador no tiene Bluetooth web.'); }, 2500);
 window.addEventListener('error', e => log('JS: '+e.message));
 window.addEventListener('unhandledrejection', e => log('Promesa: '+(e.reason?.message||e.reason)));
-renderPresets(); render();
+st.targetKmh = cfg.soft;
+renderPresets(); resetBase(); showTab(tab); render();
 })();
 </script>
 
